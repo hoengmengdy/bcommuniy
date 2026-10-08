@@ -1,6 +1,6 @@
 # Exact API endpoints
 
-Every endpoint below requires a valid active session except POST /api/auth/login. Existing administrator, ownership, and membership restrictions also apply. OPTIONS preflights return no protected data. Public registration is removed; only authenticated administrators may provision users through POST /api/users.
+Every endpoint below requires a valid active session except POST /api/auth/login. Existing administrator, ownership, and membership restrictions also apply. OPTIONS preflights return no protected data. Public registration is disabled. Only administrators may provision accounts through POST /api/users. Public /healthz is a data-free hosting probe outside the API.
 
 | Method | Path | Handler |
 | --- | --- | --- |

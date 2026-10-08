@@ -42,6 +42,7 @@ __screenshots__/
 .env
 .env.*
 !.env.example
+!.env.production.example
 backend/venv/
 __pycache__/
 *.py[cod]

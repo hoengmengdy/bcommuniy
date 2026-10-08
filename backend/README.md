@@ -44,11 +44,11 @@ npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:5173 and sign in with an existing account. Public registration is disabled. Administrators can provision accounts through the existing Admin > Manage Users screen; ordinary users and anonymous visitors cannot create accounts.
+Open http://127.0.0.1:5173. Sign in with an existing account. Public registration is disabled, and the Login page has only Email Address, Password, and Sign In. Existing accounts and Admin > Manage Users continue to work. See [the deployment guide](../DEPLOYMENT.md) for Render/PostgreSQL, persistent profile photos, environment variables, data transfer, and exact verification commands.
 
 Vite proxies /api to http://127.0.0.1:5000. The optional root .env.example documents VITE_API_URL for separate hosting. If changing the frontend origin, update CORS_ORIGINS in backend/.env. If changing Flask's port, also update the Vite proxy target or VITE_API_URL.
 
-For a built frontend, configure its web server to proxy /api to Flask, or set VITE_API_URL before building. Vite's development proxy does not configure a production web server.
+The production Docker image serves the built frontend and API together through Flask/Waitress. Run `npm run build`, then `python -m backend.production` from the root with production environment variables. The checked-in Render Blueprint configures persistent PostgreSQL and shared Redis rate limits.
 
 ## First administrator
 
@@ -72,13 +72,13 @@ Errors have the form:
 {"error":{"message":"Authentication required.","status":401}}
 ```
 
-POST /api/auth/login requires email and password for an existing active account. It returns data.user, data.token, data.expiresIn, and data.expiresAt (Unix milliseconds). The former POST /api/auth/register endpoint has been removed; there is no public signup API. GET /api/auth/me returns the verified user and meta.expiresAt from the original signed token timestamp.
+POST /api/auth/login requires email and password for an existing active account. It returns data.user, data.token, data.expiresIn, and data.expiresAt (Unix milliseconds). POST /api/auth/register has been removed; visitors cannot create their own accounts. Administrators can provision users through the existing protected admin API. Password hashes and existing credentials remain unchanged. GET /api/auth/me returns the verified user and meta.expiresAt from the original signed token timestamp.
 
-Send authenticated requests with Authorization: Bearer <token>. Every /api route requires a valid session by default, including health and all content reads. Only POST /api/auth/login is public. OPTIONS preflights return no content and remain available for CORS. Existing administrator, ownership, conversation membership, and notification recipient checks still apply after authentication. Responses use Cache-Control: no-store.
+Send authenticated requests with Authorization: Bearer <token>. Every /api route requires a valid session by default, including health and all content reads. Only POST /api/auth/login is a public authentication endpoint. Public /healthz exposes availability only. Login has configurable rate limits. OPTIONS preflights return no content and remain available for CORS. Existing administrator, ownership, conversation membership, and notification recipient checks still apply after authentication. Responses use Cache-Control: no-store.
 
 The frontend keeps the token and its absolute expiry in sessionStorage and verifies the current user with /api/auth/me before rendering protected pages after refresh or navigation. Tokens expire after TOKEN_MAX_AGE seconds (default 86400); refreshing never extends their lifetime. An expiry timer and API 401 responses immediately clear protected stores, hide protected components, and replace the current route with Login. Logout removes local access before waiting for server-side session revocation, including when that request fails. Late responses from an old session are discarded. Password changes invalidate all sessions. Deactivated or deleted accounts cannot authenticate. Server-side revocation is checked on navigation, tab focus/visibility, and every 30 seconds while the page is visible.
 
-The only public frontend route is /auth, which contains Email Address, Password, and Sign In. Registration URLs such as /register, /signup, and /create-account have no forms or account creation functionality; unauthenticated visitors are redirected to Login. All other routes require authentication:
+The only public authentication screen is /auth (Login). The former /register, /signup, and /create-account URLs redirect to Login; no signup form or link is exposed. All other routes require authentication:
 
 | Page | Protected routes |
 | --- | --- |
@@ -99,7 +99,7 @@ All paths below start with /api.
 | Feature | Routes and methods | Access |
 | --- | --- | --- |
 | Health | GET /health | Authenticated |
-| Authentication | POST /auth/login, GET /auth/me, POST /auth/logout | Login public; others authenticated; public registration removed |
+| Authentication | POST /auth/login, GET /auth/me, POST /auth/logout | Login public; others authenticated; registration removed |
 | Users | GET/POST /users; GET/PUT/DELETE /users/<id> | Collection admin; detail authenticated; changes owner or admin; account roles/status admin |
 | Profile | GET/PUT /profile | Current user |
 | Directory | GET /members, GET /mentors, GET /leaderboard | Authenticated; emails excluded |
@@ -153,7 +153,7 @@ venv\Scripts\python.exe -m flask --app app:create_app db upgrade
 
 Review generated migrations before applying them. The migration repository is already included; do not run db init again. [Flask-Migrate documents this migration workflow](https://flask-migrate.readthedocs.io/en/latest/index.html).
 
-For PostgreSQL install psycopg[binary] and set DATABASE_URL=postgresql+psycopg://user:password@host/database. For MySQL install pymysql and set DATABASE_URL=mysql+pymysql://user:password@host/database. Run db upgrade on the new database. Changing the URL does not copy existing SQLite records.
+Production requires PostgreSQL; psycopg[binary] is included in requirements.txt. Set DATABASE_URL to the managed PostgreSQL URL, SECRET_KEY to a stable random secret, and RATELIMIT_STORAGE_URI to Redis. The Render Blueprint supplies them. Changing the URL does not copy existing SQLite records; see [the deployment guide](../DEPLOYMENT.md) for the account-preserving transfer tool. SQLite is supported for development only.
 
 For a Windows WSGI server, from backend:
 
@@ -171,6 +171,7 @@ backend\venv\Scripts\python.exe -m pytest backend/tests -q
 npm run build
 npm run test:auth
 npm run test:auth:browser
+npm run test:auth:production
 npm audit
 ```
 
@@ -182,15 +183,15 @@ node backend/tests/frontend-smoke.mjs
 
 The Python suite tests every declared API method/path pair, authentication, ownership, privacy, validation, CORS, database migrations, token expiration, session revocation, and the exact create-admin command. Tests use isolated databases. Authentication regression tests check every API route against missing, forged, expired, revoked, and inactive-account sessions, including HEAD requests and future routes without decorators.
 
-`npm run test:auth` exercises the real frontend stores, refresh restoration, idle expiry, failed logout, clearing all protected caches, and late requests during session changes. `npm run test:auth:browser` starts isolated Flask/Vite servers with a temporary database and uses installed Chrome to verify every direct protected URL, the sign-in-only form, blocked signup URLs/APIs, existing-account login, refresh, logout, browser Back, idle expiry, revocation, and administrator access. It also runs the existing feature smoke test against those servers and cleans up its test processes and database. Set PYTHON to a backend Python executable if needed; PLAYWRIGHT_CHANNEL can select another installed browser such as msedge. The existing live frontend smoke test remains available when SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD identify a test administrator. It provisions temporary accounts only through the administrator API and removes its temporary accounts and related data. The isolated browser test supplies those credentials automatically.
+`npm run test:auth` exercises the real frontend stores, refresh restoration, idle expiry, failed logout, clearing all protected caches, and late requests during session changes. `npm run test:auth:browser` starts isolated Flask/Vite servers with a temporary database and uses installed Chrome to verify every direct protected URL, blocked signup URLs/APIs, existing-account login, persistent profile photo uploads, refresh, logout, browser Back, idle expiry, revocation, and administrator access. It also runs the existing feature smoke test against those servers and cleans up its test processes and database. Set PYTHON to a backend Python executable if needed; PLAYWRIGHT_CHANNEL can select another installed browser such as msedge. The existing live frontend smoke test remains available when SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD identify a test administrator. It provisions temporary accounts only through the administrator API and removes its temporary accounts and related data. The isolated browser test supplies those credentials automatically.
 
 ## Frontend scope and verification
 
-Existing frontend files and layouts remain in place. Mock login and in-memory mutations were replaced with API calls. Q&A, knowledge, code review, mentoring, and leaderboard screens are connected and reachable through the navigation. Existing-account sign-in and a conversation member picker are available; account creation is restricted to administrators. Admin-created passwords are now submitted rather than discarded. Success notifications wait for API success, and private cached data is cleared on session changes. Rendered comment text and code fallback are escaped.
+Existing frontend files and layouts remain in place. Mock login and in-memory mutations were replaced with API calls. Q&A, knowledge, code review, mentoring, and leaderboard screens remain available to authenticated users at their existing routes. The previously requested navigation link removal is preserved. Existing-account sign-in and the conversation member picker remain available. Public registration is disabled; only administrators can provision accounts. Admin-created passwords are now submitted rather than discarded. Success notifications wait for API success, and private cached data is cleared on session changes. Rendered comment text and code fallback are escaped.
 
 The original task and opportunity stores have API-backed actions; the original project had no routed task/job/event screens. Static profile portfolio links, decorative badges, follower counters, and inert attachment buttons remain frontend prototype content. The backend does not invent follow graphs, SMS delivery, binary attachment storage, mentor ratings, availability scheduling, or a reputation scoring policy.
 
-Verified on this workspace: 44 Python tests, 10 frontend session regression scenarios, the frontend production build, the full headless Chrome authentication flow, and the existing Pinia/Vite/Flask feature smoke test. Browser checks use isolated servers and a temporary database. A non-fatal Vite warning about the existing large syntax-highlighting bundle remains.
+Verified on this workspace: 70 Python tests, 11 frontend session scenarios (12 Node test results including the parent), the frontend production build, full headless Chrome flows using both Vite/Flask and the built frontend/Waitress, and the existing feature smoke test. Browser checks use isolated servers and a temporary database. A non-fatal Vite warning about the existing large syntax-highlighting bundle remains.
 
 
 ## Authentication change files

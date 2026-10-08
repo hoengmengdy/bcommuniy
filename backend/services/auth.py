@@ -64,7 +64,7 @@ def require_owner(owner_id):
 
 def create_user(data, admin=False):
     user = User(name=string(data.get("name"), "name", 120, True), email=email(data.get("email")),
-                password_hash=generate_password_hash(password(data.get("password"))))
+                password_hash=generate_password_hash(password(data.get("password")), method="scrypt"))
     if db.session.scalar(db.select(User).where(User.email == user.email)):
         raise APIError("An account with this email already exists.", 409)
     if admin:

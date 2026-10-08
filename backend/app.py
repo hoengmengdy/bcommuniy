@@ -9,16 +9,17 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import click
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_migrate import upgrade
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, NotFound
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from backend.config import BASE_DIR, load_config
-from backend.extensions import db, migrate
+from backend.extensions import db, migrate, limiter
 from backend.models import User
 from backend.routes import register_routes
 from backend.services.auth import authenticate_request
@@ -34,16 +35,20 @@ def sqlite_foreign_keys(connection, _):
 
 
 def create_app(test_config=None):
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=None)
     app.config.update(load_config())
     if test_config:
         app.config.update(test_config)
+    if app.config["TRUST_PROXY"]:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=0, x_port=0, x_prefix=0)
     (BASE_DIR / "database").mkdir(exist_ok=True)
     db.init_app(app)
     migrate.init_app(app, db, directory=str(BASE_DIR / "migrations"), compare_type=True,
                      render_as_batch=True)
-    CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
-         allow_headers=["Authorization", "Content-Type"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    if app.config["CORS_ORIGINS"]:
+        CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
+             allow_headers=["Authorization", "Content-Type"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    limiter.init_app(app)
     register_routes(app)
 
     @app.before_request
@@ -60,6 +65,30 @@ def create_app(test_config=None):
     def health():
         db.session.execute(db.text("SELECT 1"))
         return jsonify(data={"status": "ok", "database": "connected"})
+
+    @app.get("/healthz")
+    def liveness():
+        # Hosting probes get only availability, never application or user data.
+        db.session.execute(db.text("SELECT 1"))
+        return jsonify(status="ok")
+
+    @app.get("/")
+    @app.get("/<path:frontend_path>")
+    def frontend(frontend_path=""):
+        if frontend_path == "api" or frontend_path.startswith("api/"):
+            raise NotFound()
+        directory = Path(app.config["FRONTEND_DIST"])
+        candidate = (directory / frontend_path).resolve()
+        if not candidate.is_relative_to(directory):
+            raise NotFound()
+        if frontend_path and candidate.is_file():
+            return send_from_directory(directory, frontend_path)
+        if frontend_path.startswith("assets/") or Path(frontend_path).suffix:
+            raise NotFound()
+        if not (directory / "index.html").is_file():
+            raise NotFound("Frontend build is missing. Run npm run build.")
+        # This is an empty SPA shell; protected data still requires API auth.
+        return send_from_directory(directory, "index.html")
 
     @app.errorhandler(APIError)
     def validation_error(error):
@@ -87,6 +116,10 @@ def create_app(test_config=None):
     def response_headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["X-Frame-Options"] = "DENY"
+        if app.config["APP_ENV"] == "production" and request.is_secure:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
         return response
 
     @app.cli.command("create-admin")

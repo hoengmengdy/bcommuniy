@@ -10,9 +10,13 @@ const store = usePostsStore()
 const uiStore = useUiStore()
 const isLoading = ref(true)
 const showEditModal = ref(false)
+const isSaving = ref(false)
 
 async function saveProfile(data) {
-  const saved = await store.updateProfile(data.name, data.bio, data.role, data.skills)
+  if (isSaving.value) return
+  isSaving.value = true
+  const saved = await store.updateProfile(data.name, data.bio, data.role, data.skills, data.avatar)
+  isSaving.value = false
   if (!saved) return
   showEditModal.value = false
   uiStore.addToast('Profile updated successfully!', 'success')
@@ -143,6 +147,8 @@ const portfolioProjects = [
     <EditProfileModal 
       :is-open="showEditModal"
       :initial-name="store.currentUser.name"
+      :initial-avatar="store.currentUser.avatar"
+      :is-saving="isSaving"
       :initial-bio="store.currentUser.bio"
       :initial-role="store.currentUser.role"
       :initial-skills="store.currentUser.skills"
@@ -190,6 +196,7 @@ const portfolioProjects = [
   width: 120px;
   height: 120px;
   border-radius: 50%;
+  object-fit: cover;
   border: 4px solid var(--surface-bg);
   box-shadow: none;
   background: #ffffff;

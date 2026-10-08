@@ -29,7 +29,7 @@ def upgrade():
         batch_op.add_column(sa.Column('attachment', sa.JSON(), nullable=True))
 
     with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('phone', sa.String(length=40), nullable=False))
+        batch_op.add_column(sa.Column('phone', sa.String(length=40), nullable=False, server_default=''))
 
     # ### end Alembic commands ###
 

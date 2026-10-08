@@ -1,0 +1,50 @@
+# New deployment: separate web service, persistent database, and shared rate limits.
+services:
+  - type: web
+    name: bcommunity-auth-web
+    runtime: docker
+    region: singapore
+    plan: 0.5c-512mb
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    healthCheckPath: /healthz
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bcommunity-auth-db
+          property: connectionString
+      - key: RATELIMIT_STORAGE_URI
+        fromService:
+          name: bcommunity-auth-rate-limits
+          type: keyvalue
+          property: connectionString
+      - key: TRUST_PROXY
+        value: "1"
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "10000"
+      - key: TOKEN_MAX_AGE
+        value: "86400"
+  - type: keyvalue
+    name: bcommunity-auth-rate-limits
+    region: singapore
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+databases:
+  - name: bcommunity-auth-db
+    region: singapore
+    plan: 0.1c-256mb
+    postgresMajorVersion: "18"
+    databaseName: bcommunity
+    user: bcommunity
+    diskSizeGB: 5
+    ipAllowList: []

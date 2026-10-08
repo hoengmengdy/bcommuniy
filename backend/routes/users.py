@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash
 from backend.extensions import db
 from backend.models import Conversation, ConversationMember, User
 from backend.services.auth import admin_required, create_user, login_required, require_owner
+from backend.services.images import profile_image
 from backend.utils.validation import APIError, body, choice, email, page, password, string, strings, url
 
 bp = Blueprint("users", __name__)
@@ -16,7 +17,7 @@ def update_profile(user, data):
         elif key == "skills":
             value = strings(value, key)
         elif key == "avatar":
-            value = url(value, key) or ""
+            value = profile_image(value) if isinstance(value, str) and value.startswith("data:") else (url(value, key) or "")
         else:
             value = string(value, key, {"name": 120, "phone": 40}.get(key, 2000), True if key == "name" else False)
             if value is None:

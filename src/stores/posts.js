@@ -61,8 +61,6 @@ export const usePostsStore = defineStore('posts', () => {
     })()
     return initialization
   }
-  // Registration creates an account without granting a session. Login is required next.
-  const registerAccount = data => api('/auth/register', { method: 'POST', body: data })
   async function authenticate(data) {
     const response = await api('/auth/login', { method: 'POST', body: data })
     setToken(response.data.token, response.data.expiresAt)
@@ -97,8 +95,10 @@ export const usePostsStore = defineStore('posts', () => {
   }
   const likePost = postId => apiAction(async () =>
     replacePost((await api('/posts/' + postId + '/like', { method: 'POST' })).data))
-  const updateProfile = (name, bio, role, skills) => apiAction(async () => {
-    currentUser.value = (await api('/profile', { method: 'PUT', body: { name, bio, role, skills } })).data
+  const updateProfile = (name, bio, role, skills, avatar) => apiAction(async () => {
+    const body = { name, bio, role, skills }
+    if (avatar !== undefined) body.avatar = avatar
+    currentUser.value = (await api('/profile', { method: 'PUT', body })).data
     await fetchPosts()
     return currentUser.value
   })
@@ -106,6 +106,6 @@ export const usePostsStore = defineStore('posts', () => {
     replacePost((await api('/posts/' + postId + '/solve', {
       method: 'POST', body: { commentId },
     })).data))
-  return { posts, currentUser, getPostById, initialize, validateSession, fetchPosts, fetchPost, authenticate, registerAccount,
+  return { posts, currentUser, getPostById, initialize, validateSession, fetchPosts, fetchPost, authenticate,
     logout, addPost, addComment, likePost, updateProfile, markAsSolved }
 })

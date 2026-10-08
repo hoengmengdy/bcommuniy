@@ -39,9 +39,7 @@ const router = createRouter({
     {
       path: '/register',
       alias: ['/signup', '/create-account'],
-      name: 'register',
-      meta: { public: true },
-      component: () => import('../views/RegisterView.vue'),
+      redirect: { name: 'auth' },
     },
     {
       path: '/admin',
@@ -66,7 +64,7 @@ const router = createRouter({
 
 
 router.beforeEach(async to => {
-  // Only the login and registration screens are public. New routes are protected
+  // Only the login screen is public. New routes are protected
   // automatically, including direct URLs and browser history navigation.
   if (to.meta.public === true) return
   const store = usePostsStore()

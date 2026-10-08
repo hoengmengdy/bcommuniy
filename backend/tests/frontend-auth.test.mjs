@@ -59,6 +59,14 @@ test('authentication lifecycle and protected caches', async t => {
       assert.equal(store.currentUser, null)
       assert.deepEqual(store.posts, [])
     })
+    await t.test('public registration is unavailable to frontend visitors', async () => {
+      const store = setup()
+      globalThis.fetch = () => { throw new Error('Removed signup must not call the server') }
+      assert.equal(store.registerAccount, undefined)
+      await assert.rejects(api('/auth/register', { method: 'POST', body: {} }), { status: 401 })
+      assert.equal(store.currentUser, null)
+      assert.equal(hasToken(), false)
+    })
     await t.test('login and a fresh store restore the server-verified session', async () => {
       const store = setup()
       const expiresAt = Date.now() + 60000

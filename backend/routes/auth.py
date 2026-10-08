@@ -1,11 +1,13 @@
 from flask import Blueprint, current_app, g, jsonify
-from werkzeug.security import check_password_hash
-from backend.extensions import db
+import secrets
+from werkzeug.security import check_password_hash, generate_password_hash
+from backend.extensions import db, limiter
 from backend.models import User
 from backend.services.auth import issue_token, login_required, serializer
 from backend.utils.validation import APIError, body, email
 
 bp = Blueprint("auth", __name__)
+DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_urlsafe(32), method="scrypt")
 
 
 def response(user, status=200):
@@ -19,6 +21,7 @@ def response(user, status=200):
 
 
 @bp.post("/auth/login")
+@limiter.limit(lambda: current_app.config["AUTH_LOGIN_LIMIT"])
 def login():
     data = body(("email", "password"))
     address = email(data.get("email"))
@@ -26,8 +29,9 @@ def login():
     if not isinstance(secret, str) or len(secret) > 128:
         raise APIError("Invalid email or password.", 401)
     user = db.session.scalar(db.select(User).where(User.email == address))
-    # Check a real hash only when an account exists; errors never disclose status.
-    if not user or not check_password_hash(user.password_hash, secret) or user.status != "Active":
+    # Use the same password-hashing work even when the account does not exist.
+    valid_password = check_password_hash(user.password_hash if user else DUMMY_PASSWORD_HASH, secret)
+    if not user or not valid_password or user.status != "Active":
         raise APIError("Invalid email or password.", 401)
     return response(user)
 

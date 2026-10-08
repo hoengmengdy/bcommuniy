@@ -93,8 +93,8 @@ def test_self_registration_is_unavailable(client, app, accounts, path):
     with app.app_context():
         before = db.session.execute(db.select(User.id, User.password_hash).order_by(User.id)).all()
     data = {"name": "Uninvited", "email": "uninvited@example.com", "password": secrets.token_urlsafe(18)}
-    for actor, expected in [(None, 401), (accounts["owner"]["headers"], 404),
-                            (accounts["admin"]["headers"], 404)]:
+    for actor, expected in [(None, 401), (accounts["owner"]["headers"], 405),
+                            (accounts["admin"]["headers"], 405)]:
         response = client.post(path, headers=actor, json=data)
         assert response.status_code == expected, (path, response.json)
         assert "data" not in response.json
@@ -111,3 +111,37 @@ def test_anonymous_and_ordinary_users_cannot_provision_accounts(client, app, acc
     assert client.post("/api/auth/login", json={"email": data["email"], "password": data["password"]}).status_code == 401
     with app.app_context():
         assert db.session.scalar(db.select(User).where(User.email == data["email"])) is None
+
+
+@pytest.mark.parametrize("changes", [
+    {"name": " "}, {"email": "not-an-email"}, {"password": "short", "confirmPassword": "short"},
+    {"confirmPassword": "different-password"}, {"confirmPassword": None},
+    {"role": "Admin"}, {"accountRole": "Admin"}, {"status": "Active"},
+])
+def test_invalid_registration_creates_nothing(client, app, changes):
+    secret = secrets.token_urlsafe(18)
+    response = client.post("/api/auth/register", json={"name": "Member", "email": "invalid@example.com",
+        "password": secret, "confirmPassword": secret, **changes})
+    assert response.status_code == 401
+    with app.app_context():
+        assert db.session.scalar(db.select(db.func.count()).select_from(User)) == 0
+
+
+def test_duplicate_registration_preserves_existing_password(client, app, create_account):
+    existing = create_account({"name": "Existing", "email": "duplicate@example.com",
+                               "password": secrets.token_urlsafe(18)})
+    with app.app_context():
+        before = db.session.get(User, existing["user"]["id"]).password_hash
+    secret = secrets.token_urlsafe(18)
+    response = client.post("/api/auth/register", json={"name": "Replacement", "email": "DUPLICATE@example.com",
+                                                       "password": secret, "confirmPassword": secret})
+    assert response.status_code == 401
+    with app.app_context():
+        assert db.session.get(User, existing["user"]["id"]).password_hash == before
+        assert db.session.scalar(db.select(db.func.count()).select_from(User)) == 1
+
+
+def test_public_member_profiles_hide_contact_information(client, accounts):
+    response = client.get("/api/members", headers=accounts["owner"]["headers"])
+    for user in response.json["data"]:
+        assert not {"email", "phone", "password", "password_hash", "auth_version"} & user.keys()

@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:auth": "node --test backend/tests/frontend-auth.test.mjs",
-    "test:auth:browser": "node backend/tests/auth-browser-smoke.mjs"
+    "test:auth:browser": "node backend/tests/auth-browser-smoke.mjs",
+    "test:auth:production": "npm run build && node backend/tests/auth-browser-smoke.mjs --built"
   },
   "dependencies": {
     "gsap": "^3.15.0",

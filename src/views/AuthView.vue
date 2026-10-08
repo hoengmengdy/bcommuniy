@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { RouterLink, useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { usePostsStore } from '@/stores/posts'
 
@@ -22,7 +22,7 @@ const handleSubmit = async () => {
     const redirect = route.query.redirect
     const target = typeof redirect === 'string' && redirect.startsWith('/') &&
       !redirect.startsWith('//') && !redirect.includes('\\') &&
-      !['auth', 'register'].includes(router.resolve(redirect).name) ? redirect : '/'
+      router.resolve(redirect).name !== 'auth' ? redirect : '/'
     await router.replace(target)
   } catch (error) {
     uiStore.addToast(error.message || 'Unable to reach the API. Start the Flask backend.', 'error')
@@ -54,11 +54,6 @@ const handleSubmit = async () => {
           <span v-else class="loader"></span>
         </button>
       </form>
-      <div class="auth-switch">
-        <RouterLink :to="{ name: 'register', query: { redirect: route.query.redirect } }" class="auth-link create-account-link">
-          Create an account
-        </RouterLink>
-      </div>
     </div>
   </div>
 </template>

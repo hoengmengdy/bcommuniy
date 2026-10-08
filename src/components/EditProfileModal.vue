@@ -1,9 +1,11 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
   isOpen: Boolean,
   initialName: String,
+  initialAvatar: String,
+  isSaving: Boolean,
   initialBio: String,
   initialRole: String,
   initialSkills: {
@@ -19,9 +21,62 @@ const editBio = ref(props.initialBio)
 const editRole = ref(props.initialRole || 'Beginner')
 const editSkills = ref(props.initialSkills ? props.initialSkills.join(', ') : '')
 
+const selectedAvatar = ref(undefined)
+const previewAvatar = ref(props.initialAvatar)
+const imageError = ref('')
+const isReading = ref(false)
+const photoInput = ref(null)
+let selection = 0
+
+watch(() => props.isOpen, open => {
+  selection++
+  if (!open) return
+  editName.value = props.initialName
+  editBio.value = props.initialBio
+  editRole.value = props.initialRole || 'Beginner'
+  editSkills.value = props.initialSkills.join(', ')
+  selectedAvatar.value = undefined
+  previewAvatar.value = props.initialAvatar
+  imageError.value = ''
+  isReading.value = false
+})
+
+async function choosePhoto(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const version = ++selection
+  selectedAvatar.value = undefined
+  previewAvatar.value = props.initialAvatar
+  imageError.value = ''
+  isReading.value = false
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    imageError.value = 'Choose a JPEG, PNG, WebP or GIF image under 5 MB.'
+    event.target.value = ''
+    return
+  }
+  isReading.value = true
+  try {
+    const value = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = () => reject(new Error('Unable to read this photo. Please choose it again.'))
+      reader.readAsDataURL(file)
+    })
+    if (version !== selection) return
+    selectedAvatar.value = value
+    previewAvatar.value = value
+  } catch (error) {
+    if (version === selection) imageError.value = error.message
+  } finally {
+    if (version === selection) isReading.value = false
+  }
+}
+
 function handleSave() {
+  if (props.isSaving || isReading.value || imageError.value) return
   emit('save', {
     name: editName.value,
+    avatar: selectedAvatar.value,
     bio: editBio.value,
     role: editRole.value,
     skills: editSkills.value.split(',').map(s => s.trim()).filter(s => s)
@@ -38,6 +93,19 @@ function handleSave() {
       </div>
       
       <div class="modal-body">
+        <div class="form-group">
+          <label for="profile-photo">Profile Photo</label>
+          <div class="photo-editor">
+            <img :src="previewAvatar" alt="Profile photo preview" class="photo-preview" />
+            <div>
+              <input id="profile-photo" ref="photoInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+                class="photo-input" :disabled="isSaving" @change="choosePhoto" />
+              <button type="button" class="btn-cancel" :disabled="isSaving || isReading" @click="photoInput?.click()">Upload Photo</button>
+              <p class="photo-help">JPEG, PNG, WebP or GIF. Maximum 5 MB.</p>
+            </div>
+          </div>
+          <p v-if="imageError" class="photo-error" role="alert">{{ imageError }}</p>
+        </div>
         <div class="form-group">
           <label>Display Name</label>
           <input type="text" v-model="editName" class="form-input" />
@@ -65,13 +133,20 @@ function handleSave() {
       
       <div class="modal-footer">
         <button class="btn-cancel" @click="$emit('close')">Cancel</button>
-        <button class="btn-save" @click="handleSave">Save Changes</button>
+        <button class="btn-save" :disabled="isSaving || isReading || !!imageError" @click="handleSave">{{ isSaving ? 'Saving...' : 'Save Changes' }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.photo-editor { display: flex; align-items: center; gap: 1rem; }
+.photo-preview { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; }
+.photo-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.photo-help { font-size: 0.8rem; color: #64748b; margin: 0.5rem 0 0; }
+.photo-error { color: #b91c1c; font-size: 0.85rem; margin: 0; }
+button:disabled { opacity: 0.6; cursor: wait; }
+
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -91,6 +166,8 @@ function handleSave() {
   border-radius: 16px;
   width: 100%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: none;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }

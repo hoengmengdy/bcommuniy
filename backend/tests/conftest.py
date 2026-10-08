@@ -12,7 +12,7 @@ from backend.services.auth import create_user, issue_token
 @pytest.fixture()
 def app():
     app = create_app({"TESTING": True, "SECRET_KEY": secrets.token_hex(32),
-                      "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+                      "SQLALCHEMY_DATABASE_URI": "sqlite://", "RATELIMIT_ENABLED": False})
     with app.app_context():
         db.create_all()
     yield app
@@ -28,7 +28,7 @@ def client(app):
 
 @pytest.fixture()
 def create_account(app):
-    # Trusted test provisioning only; no public account creation endpoint exists.
+    # Trusted fixtures also exercise administrator-only account provisioning.
     def provision(data, admin=False):
         with app.app_context():
             user = create_user(data, admin=admin)

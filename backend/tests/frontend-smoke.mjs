@@ -99,7 +99,7 @@ try {
   assert.ok(await store.logout())
   assert.equal(store.currentUser, null)
   assert.equal(chat.conversations.length, 0)
-  console.log('PASS: real Pinia stores -> Vite /api proxy -> Flask -> SQLite persistence.')
+  console.log('PASS: real Pinia stores -> HTTP API -> Flask -> database persistence.')
   console.log('Verified existing-account login, profile, posts, comments, likes, accepted answers, private chat, tasks, articles, opportunities, notifications, and logout.')
 } finally {
   for (const account of accounts.reverse()) {

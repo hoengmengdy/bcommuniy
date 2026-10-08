@@ -32,12 +32,12 @@ class User(db.Model):
     def to_dict(self, private=False, admin=False):
         result = {"id": self.id, "name": self.name,
                   "avatar": self.avatar or f"https://api.dicebear.com/7.x/initials/svg?seed={quote(self.name)}",
-                  "bio": self.bio, "phone": self.phone, "role": self.account_role if admin else self.role,
+                  "bio": self.bio, "role": self.account_role if admin else self.role,
                   "profileRole": self.role, "skills": self.skills,
                   "reputation": self.reputation, "joinDate": iso(self.joined_at),
                   "isAdmin": self.account_role == "Admin"}
         if private or admin:
-            result.update(email=self.email, accountRole=self.account_role, status=self.status)
+            result.update(email=self.email, phone=self.phone, accountRole=self.account_role, status=self.status)
         return result
 
 

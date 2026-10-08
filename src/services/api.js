@@ -43,7 +43,7 @@ export function hasToken() {
 export const getSessionVersion = () => sessionVersion
 
 export async function api(endpoint, { method = 'GET', body, ...options } = {}) {
-  const publicRequest = method.toUpperCase() === 'POST' && ['/auth/login', '/auth/register'].includes(endpoint)
+  const publicRequest = method.toUpperCase() === 'POST' && endpoint === '/auth/login'
   if (!publicRequest && !hasToken()) {
     const error = new Error('Please sign in to continue.')
     error.status = 401

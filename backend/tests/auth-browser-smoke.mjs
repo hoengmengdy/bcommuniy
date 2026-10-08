@@ -13,6 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { chromium, expect } from '@playwright/test'
 import { createServer } from 'vite'
 
+const built = process.argv.includes('--built')
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const directory = await mkdtemp(path.join(tmpdir(), 'bcommunity-auth-'))
 const portReservation = createNetServer()
@@ -29,18 +30,22 @@ import os
 from backend.app import create_app
 from backend.extensions import db
 from backend.services.auth import create_user
-app = create_app({"TESTING": True})
+app = create_app({"TESTING": True, "RATELIMIT_ENABLED": False})
 with app.app_context():
     db.create_all()
     create_user({"name": "Test Admin", "email": "admin@example.com", "password": os.environ["AUTH_TEST_ADMIN_PASSWORD"], "role": "Admin"}, admin=True)
     create_user({"name": "Existing Browser Member", "email": "member@example.com", "password": os.environ["AUTH_TEST_MEMBER_PASSWORD"]})
     db.session.commit()
-app.run(host="127.0.0.1", port=${backendPort}, use_reloader=False)
+if os.environ["AUTH_TEST_BUILT_FRONTEND"] == "1":
+    from waitress import serve
+    serve(app, host="127.0.0.1", port=${backendPort})
+else:
+    app.run(host="127.0.0.1", port=${backendPort}, use_reloader=False)
 `], {
   cwd: root, windowsHide: true,
   env: { ...process.env, SECRET_KEY: randomBytes(32).toString('hex'),
     DATABASE_URL: 'sqlite:///' + path.join(directory, 'test.db').replaceAll('\\', '/'),
-    TOKEN_MAX_AGE: '86400', AUTH_TEST_ADMIN_PASSWORD: adminPassword, AUTH_TEST_MEMBER_PASSWORD: password },
+    TOKEN_MAX_AGE: '86400', AUTH_TEST_BUILT_FRONTEND: built ? '1' : '0', AUTH_TEST_ADMIN_PASSWORD: adminPassword, AUTH_TEST_MEMBER_PASSWORD: password },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let logs = '', backendError
@@ -57,10 +62,14 @@ try {
     await delay(100)
   }
   assert.ok(ready, 'Isolated backend must start: ' + logs)
-  vite = await createServer({ root, server: { port: 0, strictPort: false,
-    proxy: { '/api': { target: backendOrigin, changeOrigin: true } } } })
-  await vite.listen()
-  const origin = `http://127.0.0.1:${vite.httpServer.address().port}`
+  let origin = backendOrigin
+  if (!built) {
+    vite = await createServer({ root, server: { port: 0, strictPort: false,
+      proxy: { '/api': { target: backendOrigin, changeOrigin: true } } } })
+    await vite.listen()
+    origin = `http://127.0.0.1:${vite.httpServer.address().port}`
+  }
+  console.log(built ? 'Testing built frontend and API served together by Waitress.' : 'Testing Vite frontend with proxied Flask API.')
   browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || 'chrome', headless: true })
   const page = await browser.newPage()
   const errors = []
@@ -75,37 +84,33 @@ try {
   }
   console.log('PASS: every direct protected URL requires login; protected UI stays hidden.')
 
-  // Login stays the only public authentication UI, including legacy signup URLs.
-  for (const signupPath of ['/register', '/signup', '/create-account', '/auth?mode=register', '/auth?signup=true']) {
-    await page.goto(origin + signupPath)
+  for (const path of ['/auth', '/register', '/signup', '/create-account', '/auth?mode=register']) {
+    await page.goto(origin + path)
     await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible()
     await expect(page.locator('.auth-form input')).toHaveCount(2)
     await expect(page.locator('.auth-form button')).toHaveCount(1)
-    await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toBeVisible()
-    await expect(page.locator('.auth-container')).not.toContainText(/create.?account|create an account|register|sign.?up|display name/i)
+    await expect(page.locator('.auth-container')).not.toContainText(/create.?account|create an account|register|sign.?up/i)
   }
   assert.equal((await page.request.post(origin + '/api/auth/register', {
-    data: { name: 'Uninvited', email: 'uninvited@example.com', password },
-  })).status(), 401)
-  assert.equal((await page.request.post(origin + '/api/users', {
-    data: { name: 'Uninvited', email: 'uninvited@example.com', password },
+    data: { name: 'Uninvited', email: 'uninvited@example.com', password, confirmPassword: password },
   })).status(), 401)
   await page.goto(origin + '/questions?tab=all#answers')
-  await page.locator('input[type="email"]').fill('uninvited@example.com')
-  await page.locator('input[type="password"]').fill(password)
+  assert.equal((await page.request.post(origin + '/api/users', {
+    data: { name: 'Unauthorized Admin', email: 'admin2@example.com', password },
+  })).status(), 401)
+  await page.getByLabel('Email Address', { exact: true }).fill('unregistered@example.com')
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign In', exact: true }).click()
   await expect(page.locator('.toast-error')).toContainText('Invalid email or password.')
   await expect(page.locator('.navbar-wrapper')).toHaveCount(0)
-  await page.locator('input[type="email"]').fill('member@example.com')
+  await page.getByLabel('Email Address', { exact: true }).fill('member@example.com')
   await page.getByRole('button', { name: 'Sign In', exact: true }).click()
   await expect(page).toHaveURL(origin + '/questions?tab=all#answers')
   await expect(page.getByRole('button', { name: 'Sign Out', exact: true })).toBeVisible()
-  console.log('PASS: Login contains only email, password, and Sign In; public signup and unknown-account login are blocked.')
+  console.log('PASS: Login has no signup option; direct signup URLs and anonymous registration APIs are blocked.')
   const token = await page.evaluate(() => sessionStorage.getItem('bcommunity-token'))
   const headers = { Authorization: 'Bearer ' + token }
-  assert.equal((await page.request.post(origin + '/api/auth/register', { headers,
-    data: { name: 'Uninvited', email: 'uninvited@example.com', password },
-  })).status(), 404)
+  assert.ok([404, 405].includes((await page.request.post(origin + '/api/auth/register', { headers, data: {} })).status()))
   const created = await page.request.post(origin + '/api/posts', { headers,
     data: { content: 'Protected browser test content' } })
   assert.equal(created.status(), 201)
@@ -123,6 +128,32 @@ try {
   await expect(page).toHaveURL(origin + '/')
   assert.equal((await page.request.get(origin + '/api/users', { headers })).status(), 403)
   console.log('PASS: existing-account login, content access, refresh restoration, and admin restrictions.')
+
+  await page.goto(origin + '/profile')
+  await page.getByRole('button', { name: 'Edit Profile', exact: true }).click()
+  await page.getByLabel('Profile Photo', { exact: true }).setInputFiles({
+    name: 'invalid.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg/>'),
+  })
+  await expect(page.getByRole('alert')).toContainText('Choose a JPEG, PNG, WebP or GIF')
+  const photo = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64; canvas.height = 64
+    const context = canvas.getContext('2d')
+    context.fillStyle = '#7c3aed'; context.fillRect(0, 0, 64, 64)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  await page.getByLabel('Profile Photo', { exact: true }).setInputFiles({
+    name: 'profile.png', mimeType: 'image/png', buffer: Buffer.from(photo, 'base64'),
+  })
+  await expect(page.getByAltText('Profile photo preview')).toHaveAttribute('src', /^data:image\/png;base64,/)
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
+  await expect(page.locator('.modal-backdrop')).toHaveCount(0)
+  await expect(page.locator('.profile-avatar')).toHaveAttribute('src', /^data:image\/webp;base64,/)
+  const storedPhoto = await page.locator('.profile-avatar').getAttribute('src')
+  await page.reload()
+  await expect(page.locator('.profile-avatar')).toHaveAttribute('src', storedPhoto)
+  assert.equal(await page.locator('.profile-avatar').evaluate(image => image.complete && image.naturalWidth === 256), true)
+  console.log('PASS: photo uploads reject SVG, save a normalized image, and survive browser refresh.')
 
   // Hold the logout response: the frontend must hide content immediately.
   let releaseLogout, logoutStarted
@@ -165,13 +196,18 @@ try {
   console.log('PASS: invalid login is blocked; valid login returns to the requested page.')
 
   // Exercise the real expiry timer without waiting 24 hours.
-  await page.evaluate(async () => {
-    const { setSessionExpiry } = await import('/src/services/api.js')
-    setSessionExpiry(Date.now() + 100)
-  })
+  if (built) {
+    await page.evaluate(() => sessionStorage.setItem('bcommunity-token-expires-at', String(Date.now() - 1)))
+    await page.reload()
+  } else {
+    await page.evaluate(async () => {
+      const { setSessionExpiry } = await import('/src/services/api.js')
+      setSessionExpiry(Date.now() + 100)
+    })
+  }
   await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible()
   await expect(page.locator('.knowledge-container, .navbar-wrapper')).toHaveCount(0)
-  console.log('PASS: an idle session expiry redirects and hides protected content automatically.')
+  console.log('PASS: session expiry redirects and hides protected content automatically.')
 
   await login('member@example.com', password, '/messages')
   const activeToken = await page.evaluate(() => sessionStorage.getItem('bcommunity-token'))

@@ -26,9 +26,9 @@ def call(client, method, path, status=200, headers=None, data=None, **kwargs):
 def test_auth_profile_users(client, app, accounts, create_account):
     owner, admin = accounts["owner"], accounts["admin"]
     secret = secrets.token_urlsafe(18)
-    created = create_account({"name": "Existing Member", "email": "NEW@example.com", "password": secret})
-    user_id = created["user"]["id"]
-    assert created["user"]["email"] == "new@example.com"
+    existing = create_account({"name": "Existing Member", "email": "NEW@example.com", "password": secret})
+    user_id = existing["user"]["id"]
+    assert existing["user"]["email"] == "new@example.com"
     with app.app_context():
         user = db.session.get(User, user_id)
         assert user.password_hash != secret and check_password_hash(user.password_hash, secret)
