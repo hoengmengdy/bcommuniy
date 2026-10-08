@@ -1,5 +1,5 @@
-// Run from the project root with both servers running:
-// node backend/tests/frontend-smoke.mjs
+// Run via npm run test:auth:browser for isolated servers and administrator-provisioned test accounts.
+// Standalone runs need FRONTEND_ORIGIN, SMOKE_ADMIN_EMAIL, and SMOKE_ADMIN_PASSWORD.
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { createPinia, setActivePinia } from 'pinia'
@@ -32,24 +32,40 @@ const knowledge = useKnowledgeStore()
 const opportunities = useOpportunitiesStore()
 const suffix = randomUUID()
 const accounts = []
+let administratorToken = ''
 const bob = { name: 'Smoke Bob', email: 'bob-' + suffix + '@example.com', password: randomUUID() }
 const alice = { name: 'Smoke Alice', email: 'alice-' + suffix + '@example.com', password: randomUUID() }
 
 try {
-  assert.equal((await api('/health')).data.database, 'connected')
+  await assert.rejects(api('/posts'), { status: 401 })
   await store.initialize()
-  let user = await store.authenticate('register', bob)
-  accounts.push({ id: user.id, token: values.get('bcommunity-token') })
+  assert.ok(process.env.SMOKE_ADMIN_EMAIL && process.env.SMOKE_ADMIN_PASSWORD,
+    'Use npm run test:auth:browser, or configure a test administrator for this smoke test.')
+  const administrator = await originalFetch(origin + '/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.SMOKE_ADMIN_EMAIL, password: process.env.SMOKE_ADMIN_PASSWORD }),
+  })
+  assert.equal(administrator.status, 200, 'Test administrator login')
+  administratorToken = (await administrator.json()).data.token
+  for (const credentials of [bob, alice]) {
+    const created = await originalFetch(origin + '/api/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + administratorToken },
+      body: JSON.stringify(credentials),
+    })
+    assert.equal(created.status, 201, 'Test accounts are created only by an authenticated administrator')
+    accounts.push((await created.json()).data.id)
+  }
+  let user = await store.authenticate({ email: bob.email, password: bob.password })
+  assert.equal((await api('/health')).data.database, 'connected')
   const bobId = user.id
-  user = await store.authenticate('register', alice)
-  accounts.push({ id: user.id, token: values.get('bcommunity-token') })
+  user = await store.authenticate({ email: alice.email, password: alice.password })
   const aliceId = user.id
   const profile = await store.updateProfile('Smoke Alice Updated', 'Persistent bio', 'Teacher', ['Python'])
   assert.equal(profile.bio, 'Persistent bio')
   assert.equal(profile.isAdmin, false)
   const post = await store.addPost('Live proxy question', '#Q&A', 'print(1)', 'python', true)
   assert.ok(post?.id)
-  await store.authenticate('login', { email: bob.email, password: bob.password })
+  await store.authenticate({ email: bob.email, password: bob.password })
   const comment = await store.addComment(post.id, 'A live answer')
   assert.ok(comment?.id)
   assert.equal((await store.likePost(post.id)).likes, 1)
@@ -57,7 +73,7 @@ try {
   const conversation = await chat.startConversation(aliceId)
   assert.ok(conversation?.id)
   assert.ok(await chat.sendMessage('Hello through the frontend store'))
-  await store.authenticate('login', { email: alice.email, password: alice.password })
+  await store.authenticate({ email: alice.email, password: alice.password })
   assert.equal(chat.conversations.length, 0, 'Session changes clear private cached conversations')
   assert.ok(await chat.fetchConversations())
   assert.ok(chat.conversations.some(item => item.id === conversation.id && item.unread === 1))
@@ -84,13 +100,16 @@ try {
   assert.equal(store.currentUser, null)
   assert.equal(chat.conversations.length, 0)
   console.log('PASS: real Pinia stores -> Vite /api proxy -> Flask -> SQLite persistence.')
-  console.log('Verified registration, login, profile, posts, comments, likes, accepted answers, private chat, tasks, articles, opportunities, notifications, and logout.')
+  console.log('Verified existing-account login, profile, posts, comments, likes, accepted answers, private chat, tasks, articles, opportunities, notifications, and logout.')
 } finally {
   for (const account of accounts.reverse()) {
-    const response = await originalFetch(origin + '/api/users/' + account.id, {
-      method: 'DELETE', headers: { Authorization: 'Bearer ' + account.token },
+    const response = await originalFetch(origin + '/api/users/' + account, {
+      method: 'DELETE', headers: { Authorization: 'Bearer ' + administratorToken },
     })
     assert.equal(response.status, 200, 'Temporary account cleanup')
   }
+  if (administratorToken) await originalFetch(origin + '/api/auth/logout', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + administratorToken },
+  })
   console.log('Temporary test accounts and their related data removed.')
 }

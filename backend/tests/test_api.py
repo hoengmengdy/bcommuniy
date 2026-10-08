@@ -23,11 +23,10 @@ def call(client, method, path, status=200, headers=None, data=None, **kwargs):
     return response.json.get("data")
 
 
-def test_auth_profile_users(client, app, accounts):
+def test_auth_profile_users(client, app, accounts, create_account):
     owner, admin = accounts["owner"], accounts["admin"]
     secret = secrets.token_urlsafe(18)
-    created = call(client, "POST", "/api/auth/register", 201,
-                   data={"name": "New Member", "email": "NEW@example.com", "password": secret})
+    created = create_account({"name": "Existing Member", "email": "NEW@example.com", "password": secret})
     user_id = created["user"]["id"]
     assert created["user"]["email"] == "new@example.com"
     with app.app_context():
@@ -70,15 +69,15 @@ def test_post_crud(client, accounts, resource):
     owner, other = accounts["owner"]["headers"], accounts["other"]["headers"]
     body = {"content": "Content", "title": "Title", "tags": ["python"], "codeSnippet": "print(1)"}
     post = call(client, "POST", f"/api/{resource}", 201, headers=owner, data=body)
-    assert call(client, "GET", f"/api/{resource}")
-    assert call(client, "GET", f"/api/{resource}/{post['id']}")["id"] == post["id"]
+    assert call(client, "GET", f"/api/{resource}", headers=owner)
+    assert call(client, "GET", f"/api/{resource}/{post['id']}", headers=owner)["id"] == post["id"]
     updated = call(client, "PUT", f"/api/{resource}/{post['id']}", headers=owner,
                    data={"content": "Updated"})
     assert updated["content"] == "Updated"
     assert client.put(f"/api/{resource}/{post['id']}", headers=other,
                       json={"content": "Steal"}).status_code == 403
     call(client, "DELETE", f"/api/{resource}/{post['id']}", headers=owner)
-    assert client.get(f"/api/{resource}/{post['id']}").status_code == 404
+    assert client.get(f"/api/{resource}/{post['id']}", headers=owner).status_code == 404
 
 
 def test_comments_likes_answers(client, accounts):
@@ -91,8 +90,8 @@ def test_comments_likes_answers(client, accounts):
     cid = comment["id"]
     reply = call(client, "POST", f"/api/posts/{pid}/comments", 201, headers=owner,
                  data={"text": "Reply", "parentId": cid})
-    assert len(call(client, "GET", f"/api/posts/{pid}/comments")) == 2
-    assert call(client, "GET", f"/api/comments/{cid}")["text"] == "Answer"
+    assert len(call(client, "GET", f"/api/posts/{pid}/comments", headers=owner)) == 2
+    assert call(client, "GET", f"/api/comments/{cid}", headers=owner)["text"] == "Answer"
     call(client, "PUT", f"/api/comments/{cid}", headers=other, data={"text": "Better answer"})
     assert client.put(f"/api/comments/{cid}", headers=owner, json={"text": "Steal"}).status_code == 403
     assert call(client, "POST", f"/api/posts/{pid}/like", headers=other)["likes"] == 1
@@ -102,9 +101,9 @@ def test_comments_likes_answers(client, accounts):
     solved = call(client, "POST", f"/api/posts/{pid}/solve", headers=owner, data={"commentId": cid})
     assert solved["isSolved"] and solved["comments"][0]["isBestAnswer"]
     call(client, "DELETE", f"/api/comments/{cid}", headers=other)
-    assert call(client, "GET", f"/api/posts/{pid}")["isSolved"] is False
-    assert call(client, "GET", f"/api/posts/{pid}/comments") == []
-    assert client.get(f"/api/comments/{reply['id']}").status_code == 404
+    assert call(client, "GET", f"/api/posts/{pid}", headers=owner)["isSolved"] is False
+    assert call(client, "GET", f"/api/posts/{pid}/comments", headers=owner) == []
+    assert client.get(f"/api/comments/{reply['id']}", headers=owner).status_code == 404
 
 
 def test_private_chat(client, accounts):
@@ -152,8 +151,8 @@ def test_catalog(client, accounts, resource, data):
         assert client.post("/api/" + resource, headers=owner, json=data).status_code == 403
     item = call(client, "POST", "/api/" + resource, 201, headers=actor, data=data)
     path = f"/api/{resource}/{item['id']}"
-    assert call(client, "GET", "/api/" + resource)[0]["id"] == item["id"]
-    assert call(client, "GET", path)["title"] == data["title"]
+    assert call(client, "GET", "/api/" + resource, headers=owner)[0]["id"] == item["id"]
+    assert call(client, "GET", path, headers=owner)["title"] == data["title"]
     assert call(client, "PUT", path, headers=actor, data={"title": "Changed"})["title"] == "Changed"
     assert client.delete(path, headers=accounts["outsider"]["headers"]).status_code == 403
     if resource == "articles":
@@ -188,17 +187,17 @@ def test_notifications_and_directory(client, accounts):
     assert call(client, "PUT", path, headers=owner, data={"isRead": True})["isRead"]
     call(client, "PUT", "/api/notifications/read", headers=owner)
     call(client, "DELETE", path, headers=owner)
-    assert len(call(client, "GET", "/api/members")) == 4
-    call(client, "GET", "/api/mentors")
-    call(client, "GET", "/api/leaderboard")
-    assert call(client, "GET", "/api/health")["database"] == "connected"
+    assert len(call(client, "GET", "/api/members", headers=owner)) == 4
+    call(client, "GET", "/api/mentors", headers=owner)
+    call(client, "GET", "/api/leaderboard", headers=owner)
+    assert call(client, "GET", "/api/health", headers=owner)["database"] == "connected"
 
 
 @pytest.mark.parametrize("path,data", [
-    ("/api/auth/register", {"name": "Name", "email": "invalid", "password": "longenough"}),
-    ("/api/auth/register", {"name": "", "email": "valid@example.com", "password": "longenough"}),
-    ("/api/auth/register", {"name": "Name", "email": "valid@example.com", "password": "short"}),
-    ("/api/auth/register", {"name": "Name", "email": "valid@example.com", "password": "longenough", "role": "Admin"}),
+    ("/api/users", {"name": "Name", "email": "invalid", "password": "longenough"}),
+    ("/api/users", {"name": "", "email": "valid@example.com", "password": "longenough"}),
+    ("/api/users", {"name": "Name", "email": "valid@example.com", "password": "short"}),
+    ("/api/users", {"name": "Name", "email": "valid@example.com", "password": "longenough", "role": "Invalid"}),
     ("/api/posts", {"content": ""}),
     ("/api/posts", {"content": 123}),
     ("/api/posts", {"content": "Text", "projectUrl": "javascript:alert(1)"}),
@@ -209,7 +208,8 @@ def test_notifications_and_directory(client, accounts):
     ("/api/tasks", {"title": "Task"}),
 ])
 def test_validation(client, accounts, path, data):
-    response = client.post(path, headers=accounts["owner"]["headers"], json=data)
+    actor = accounts["admin"] if path == "/api/users" else accounts["owner"]
+    response = client.post(path, headers=actor["headers"], json=data)
     assert response.status_code == 400, response.json
     assert "message" in response.json["error"]
 
@@ -223,7 +223,7 @@ def test_security_and_errors(client, accounts):
     assert client.put("/api/profile", headers=owner["headers"],
                       json={"role": "Admin"}).status_code == 400
     assert client.delete(f"/api/users/{admin['id']}", headers=admin["headers"]).status_code == 409
-    assert client.post("/api/auth/register", json={
+    assert client.post("/api/users", headers=admin["headers"], json={
         "name": "Duplicate", "email": "OWNER@example.com", "password": secrets.token_urlsafe(18)}
     ).status_code == 409
     assert client.post("/api/auth/login", json={
@@ -233,10 +233,10 @@ def test_security_and_errors(client, accounts):
                       content_type="application/json").status_code == 400
     assert client.post("/api/posts", headers=owner["headers"], json=[]).status_code == 400
     assert client.post("/api/posts", headers=owner["headers"], data="text").status_code == 415
-    assert client.get("/api/posts?page=0").status_code == 400
-    assert client.get("/api/posts/999").status_code == 404
+    assert client.get("/api/posts?page=0", headers=owner["headers"]).status_code == 400
+    assert client.get("/api/posts/999", headers=owner["headers"]).status_code == 404
     assert client.get("/api/missing").is_json
-    assert client.patch("/api/posts").status_code == 405
+    assert client.patch("/api/posts", headers=owner["headers"]).status_code == 405
     assert client.get("/api/auth/me", headers={"Authorization": "Bearer forged"}).status_code == 401
     allowed = client.options("/api/posts", headers={
         "Origin": "http://127.0.0.1:5173", "Access-Control-Request-Method": "POST",
@@ -246,13 +246,13 @@ def test_security_and_errors(client, accounts):
     assert "Access-Control-Allow-Origin" not in blocked.headers
 
 
-def test_token_expiration(client, app, accounts):
+def test_token_expiration(client, create_account):
     from itsdangerous import TimestampSigner
     from unittest.mock import patch
     with patch.object(TimestampSigner, "get_timestamp", return_value=1):
-        data = client.post("/api/auth/register", json={
+        data = create_account({
             "name": "Expired", "email": "expired@example.com", "password": secrets.token_urlsafe(18)
-        }).json["data"]
+        })
     assert client.get("/api/auth/me", headers={
         "Authorization": "Bearer " + data["token"]}).status_code == 401
 

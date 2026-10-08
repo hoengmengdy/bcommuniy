@@ -9,3 +9,5 @@ itsdangerous>=2.2,<3
 Werkzeug>=3.1,<4
 waitress>=3,<4
 pytest>=8,<10
+Flask-Limiter[redis]>=4.1,<5
+psycopg[binary]>=3.2,<4

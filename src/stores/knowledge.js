@@ -5,6 +5,12 @@ import { api, apiAction, apiList } from '../services/api.js'
 export const useKnowledgeStore = defineStore('knowledge', () => {
   const questions = ref([])
   const articles = ref([])
+  for (const event of ['bcommunity-session-expired', 'bcommunity-session-changed']) {
+    globalThis.addEventListener?.(event, () => {
+      questions.value = []
+      articles.value = []
+    })
+  }
   const load = () => apiAction(async () => {
     const result = await Promise.all([apiList('/questions'), apiList('/articles')])
     ;[questions.value, articles.value] = result

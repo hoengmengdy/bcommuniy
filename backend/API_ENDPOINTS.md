@@ -1,5 +1,7 @@
 # Exact API endpoints
 
+Every endpoint below requires a valid active session except POST /api/auth/login. Existing administrator, ownership, and membership restrictions also apply. OPTIONS preflights return no protected data. Public registration is removed; only authenticated administrators may provision users through POST /api/users.
+
 | Method | Path | Handler |
 | --- | --- | --- |
 | DELETE | /api/articles/<int:article_id>/like | resources.article_like |
@@ -48,7 +50,6 @@
 | POST | /api/articles/<int:article_id>/like | resources.article_like |
 | POST | /api/auth/login | auth.login |
 | POST | /api/auth/logout | auth.logout |
-| POST | /api/auth/register | auth.register |
 | POST | /api/conversations | chat.add_conversation |
 | POST | /api/conversations/<int:conversation_id>/messages | chat.add_message |
 | POST | /api/events | resources.events_create |

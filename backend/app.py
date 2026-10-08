@@ -9,7 +9,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import click
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_migrate import upgrade
 from sqlalchemy import event
@@ -21,6 +21,7 @@ from backend.config import BASE_DIR, load_config
 from backend.extensions import db, migrate
 from backend.models import User
 from backend.routes import register_routes
+from backend.services.auth import authenticate_request
 from backend.utils.validation import APIError
 
 
@@ -44,6 +45,16 @@ def create_app(test_config=None):
     CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
          allow_headers=["Authorization", "Content-Type"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
     register_routes(app)
+
+    @app.before_request
+    def protect_api():
+        # Deny by default, including future endpoints. OPTIONS carries no data
+        # and must remain available for browser CORS preflight requests.
+        if (request.path == "/api" or request.path.startswith("/api/")) and (
+            request.method != "OPTIONS"
+            and (request.method, request.endpoint) != ("POST", "auth.login")
+        ):
+            authenticate_request()
 
     @app.get("/api/health")
     def health():

@@ -1,14 +1,13 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { usePostsStore } from '@/stores/posts'
 import NotificationsDropdown from './NotificationsDropdown.vue'
 
 const store = usePostsStore()
 const showNotifications = ref(false)
 const route = useRoute()
-const router = useRouter()
-const signOut = async () => { if (await store.logout()) await router.push('/auth') }
+const signOut = () => store.logout()
 const notificationWrapperRef = ref(null)
 
 const closeDropdown = (e) => {
@@ -43,12 +42,6 @@ watch(route, () => {
         </div>
         <span class="brand-text">Bcommunity</span>
       </RouterLink>
-
-      <RouterLink to="/questions">Q&amp;A</RouterLink>
-      <RouterLink to="/knowledge">Knowledge</RouterLink>
-      <RouterLink to="/reviews">Reviews</RouterLink>
-      <RouterLink to="/mentorship">Mentors</RouterLink>
-      <RouterLink to="/leaderboard">Leaderboard</RouterLink>
 
       <!-- Search -->
       <div class="search-bar">

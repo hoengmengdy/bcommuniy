@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:auth": "node --test backend/tests/frontend-auth.test.mjs",
+    "test:auth:browser": "node backend/tests/auth-browser-smoke.mjs"
   },
   "dependencies": {
     "gsap": "^3.15.0",
@@ -16,6 +18,7 @@
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "vite": "^8.1.5",
     "vite-plugin-vue-devtools": "^8.1.5"

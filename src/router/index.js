@@ -33,10 +33,19 @@ const router = createRouter({
     {
       path: '/auth',
       name: 'auth',
+      meta: { public: true },
       component: () => import('../views/AuthView.vue'),
     },
     {
+      path: '/register',
+      alias: ['/signup', '/create-account'],
+      name: 'register',
+      meta: { public: true },
+      component: () => import('../views/RegisterView.vue'),
+    },
+    {
       path: '/admin',
+      meta: { requiresAdmin: true },
       component: () => import('../views/admin/AdminLayout.vue'),
       children: [
         {
@@ -50,19 +59,45 @@ const router = createRouter({
           component: () => import('../views/admin/UsersView.vue')
         }
       ]
-    }
+    },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
 
 
 router.beforeEach(async to => {
+  // Only the login and registration screens are public. New routes are protected
+  // automatically, including direct URLs and browser history navigation.
+  if (to.meta.public === true) return
   const store = usePostsStore()
-  await store.initialize()
-  const protectedPage = ['/profile', '/messages'].includes(to.path) || to.path.startsWith('/admin')
-  if (protectedPage && !store.currentUser) {
-    return { name: 'auth', query: { redirect: to.fullPath } }
+  if (!await store.validateSession()) {
+    return { name: 'auth', query: { redirect: to.fullPath }, replace: true }
   }
-  if (to.path.startsWith('/admin') && !store.currentUser?.isAdmin) return '/'
+  if (to.meta.requiresAdmin && !store.currentUser?.isAdmin) return '/'
+  await store.initialize()
+  if (!store.currentUser) return { name: 'auth', query: { redirect: to.fullPath }, replace: true }
 })
+
+globalThis.addEventListener?.('bcommunity-session-expired', () => {
+  const route = router.currentRoute.value
+  if (route.meta.public !== true) {
+    void router.replace({ name: 'auth', query: { redirect: route.fullPath } })
+  }
+})
+
+// Recheck server-side revocation when returning to a tab, and while it stays open.
+function revalidateSession() {
+  const store = usePostsStore()
+  if (store.currentUser) void store.validateSession()
+}
+globalThis.addEventListener?.('focus', revalidateSession)
+globalThis.addEventListener?.('pageshow', revalidateSession)
+globalThis.document?.addEventListener('visibilitychange', () => {
+  if (!document.hidden) revalidateSession()
+})
+const sessionCheck = setInterval(() => {
+  if (!globalThis.document?.hidden) revalidateSession()
+}, 30000)
+sessionCheck.unref?.()
 
 export default router

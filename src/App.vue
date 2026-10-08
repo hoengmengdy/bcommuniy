@@ -3,9 +3,12 @@ import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from '@/components/Navbar.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import { usePostsStore } from '@/stores/posts'
 
 const route = useRoute()
-const showNavbar = computed(() => !route.path.startsWith('/admin'))
+const store = usePostsStore()
+const canViewPage = computed(() => route.meta.public === true || Boolean(store.currentUser))
+const showNavbar = computed(() => store.currentUser && route.meta.public !== true && !route.meta.requiresAdmin)
 </script>
 
 <template>
@@ -14,7 +17,7 @@ const showNavbar = computed(() => !route.path.startsWith('/admin'))
       <Navbar />
     </div>
     <main class="main-content">
-      <RouterView />
+      <RouterView v-if="canViewPage" />
     </main>
     <ToastNotification />
   </div>

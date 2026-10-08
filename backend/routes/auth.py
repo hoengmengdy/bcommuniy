@@ -2,22 +2,20 @@ from flask import Blueprint, current_app, g, jsonify
 from werkzeug.security import check_password_hash
 from backend.extensions import db
 from backend.models import User
-from backend.services.auth import create_user, issue_token, login_required
-from backend.utils.validation import APIError, body, email, string
+from backend.services.auth import issue_token, login_required, serializer
+from backend.utils.validation import APIError, body, email
 
 bp = Blueprint("auth", __name__)
 
 
 def response(user, status=200):
     token = issue_token(user)
+    _, issued_at = serializer().loads(token, return_timestamp=True)
     db.session.commit()
     return jsonify(data={"user": user.to_dict(private=True), "token": token,
-                         "expiresIn": current_app.config["TOKEN_MAX_AGE"]}), status
-
-
-@bp.post("/auth/register")
-def register():
-    return response(create_user(body(("name", "email", "password"))), 201)
+                         "expiresIn": current_app.config["TOKEN_MAX_AGE"],
+                         "expiresAt": int((issued_at.timestamp() +
+                                           current_app.config["TOKEN_MAX_AGE"]) * 1000)}), status
 
 
 @bp.post("/auth/login")
@@ -37,7 +35,7 @@ def login():
 @bp.get("/auth/me")
 @login_required
 def me():
-    return jsonify(data=g.user.to_dict(private=True))
+    return jsonify(data=g.user.to_dict(private=True), meta={"expiresAt": g.auth_expires_at})
 
 
 @bp.post("/auth/logout")

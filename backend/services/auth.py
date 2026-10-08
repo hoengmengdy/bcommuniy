@@ -19,21 +19,30 @@ def issue_token(user):
     return serializer().dumps({"sid": session.id, "v": user.auth_version})
 
 
+def authenticate_request():
+    # The global API guard and existing permission decorators share one check.
+    if getattr(g, "user", None) is not None:
+        return
+    scheme, _, token = request.headers.get("Authorization", "").partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise APIError("Authentication required.", 401)
+    try:
+        payload, issued_at = serializer().loads(
+            token, max_age=current_app.config["TOKEN_MAX_AGE"], return_timestamp=True)
+        session = db.session.get(AuthSession, payload["sid"])
+        user = session.user if session else None
+        if not user or user.status != "Active" or payload["v"] != user.auth_version:
+            raise APIError("Session is no longer valid. Please sign in again.", 401)
+    except (BadSignature, KeyError, TypeError) as error:
+        raise APIError("Invalid or expired authentication token.", 401) from error
+    g.user, g.auth_session = user, session
+    g.auth_expires_at = int((issued_at.timestamp() + current_app.config["TOKEN_MAX_AGE"]) * 1000)
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
-        scheme, _, token = request.headers.get("Authorization", "").partition(" ")
-        if scheme.lower() != "bearer" or not token:
-            raise APIError("Authentication required.", 401)
-        try:
-            payload = serializer().loads(token, max_age=current_app.config["TOKEN_MAX_AGE"])
-            session = db.session.get(AuthSession, payload["sid"])
-            user = session.user if session else None
-            if not user or user.status != "Active" or payload["v"] != user.auth_version:
-                raise APIError("Session is no longer valid. Please sign in again.", 401)
-        except (BadSignature, KeyError, TypeError) as error:
-            raise APIError("Invalid or expired authentication token.", 401) from error
-        g.user, g.auth_session = user, session
+        authenticate_request()
         return fn(*args, **kwargs)
     return wrapped
 
