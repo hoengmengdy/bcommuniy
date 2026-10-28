@@ -17,6 +17,10 @@ self.addEventListener('push', event => {
     badge: '/icon-192.png',
     tag: data.url || 'bcommunity-message',
     renotify: true,
+    // Ask the OS for its notification sound, including when the app is closed.
+    // Spoken announcements are controlled by the user's phone settings.
+    silent: false,
+    lang: 'km-KH',
     data: { url: data.url || '/messages' },
   }))
 })

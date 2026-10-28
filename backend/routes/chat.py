@@ -113,8 +113,9 @@ def add_message(conversation_id):
         notify(member.user_id, "message", "sent you a message")
     db.session.commit()
     result = message.to_dict(g.user.id)
-    send_to_users([m.user_id for m in conversation.members if m.user_id != g.user.id], g.user.name,
-                  message.text or {"image": "📷 Photo", "video": "🎬 Video"}.get(kind, "New message"),
+    preview = message.text or {"image": "📷 Photo", "video": "🎬 Video"}.get(kind, "New message")
+    send_to_users([m.user_id for m in conversation.members if m.user_id != g.user.id], "មានគេឆាតមក",
+                  f"{g.user.name}: {preview}",
                   f"/messages?c={conversation.id}")
     return jsonify(data=result), 201
 

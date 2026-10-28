@@ -345,7 +345,12 @@ def test_push_notifications_and_media_messages(client, accounts, monkeypatch):
                 data={"participantId": other["id"]})
     call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
          headers=owner["headers"], data={"text": "Ping"})
-    assert sent and sent[-1][0] == device["endpoint"] and '"Ping"' in sent[-1][1]
+    import json
+    assert sent and sent[-1][0] == device["endpoint"]
+    payload = json.loads(sent[-1][1])
+    assert payload["title"] == "មានគេឆាតមក"
+    assert payload["body"] == "owner: Ping"
+    assert payload["url"] == f"/messages?c={chat['id']}"
     photo = {"name": "a.jpg", "size": "1 KB", "kind": "image",
              "url": "https://abc123.public.blob.vercel-storage.com/chat/image-1-x.jpg"}
     message = call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
