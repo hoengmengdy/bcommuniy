@@ -8,7 +8,6 @@ import { authHeaders } from '@/services/api'
 import { chatTime } from '@/utils/time'
 import { useRoute } from 'vue-router'
 import { enablePush, needsHomeScreenInstall, pushEnabled, pushSupported } from '@/services/push'
-import { messageSoundEnabled, setMessageSoundEnabled, unlockMessageSound, playMessageSound } from '@/services/message-sound'
 
 const store = useChatStore()
 const postStore = usePostsStore()
@@ -225,16 +224,16 @@ const otherProfilePath = computed(() => {
 })
 
 const route = useRoute()
-async function toggleMessageSound() {
-  if (messageSoundEnabled.value) {
-    setMessageSoundEnabled(false)
-    return
-  }
-  setMessageSoundEnabled(true)
-  if (await unlockMessageSound()) playMessageSound()
-  else {
-    setMessageSoundEnabled(false)
-    uiStore.addToast('Sound is unavailable. Try again after allowing audio in your browser.', 'error')
+let refreshTimer
+let refreshInProgress = false
+let disposed = false
+async function refreshChats() {
+  if (document.hidden || refreshInProgress || disposed) return
+  refreshInProgress = true
+  try {
+    await store.fetchConversations()
+  } finally {
+    refreshInProgress = false
   }
 }
 onMounted(async () => {
@@ -248,6 +247,16 @@ onMounted(async () => {
   }
   if (store.activeChatId) await store.setActiveChat(store.activeChatId)
   scrollToBottom()
+  if (disposed) return
+  refreshTimer = setInterval(refreshChats, 2000)
+  document.addEventListener('visibilitychange', refreshChats)
+  window.addEventListener('focus', refreshChats)
+})
+onUnmounted(() => {
+  disposed = true
+  clearInterval(refreshTimer)
+  document.removeEventListener('visibilitychange', refreshChats)
+  window.removeEventListener('focus', refreshChats)
 })
 
 // iOS Safari keeps the page full height when the keyboard opens and scrolls everything up instead.
@@ -287,9 +296,6 @@ onUnmounted(() => {
       <div class="chat-sidebar" :class="{ 'hidden-mobile': mobileView === 'thread' }">
         <div class="sidebar-header">
           <h2 class="sidebar-title">Messages</h2>
-          <button class="push-banner" :aria-pressed="messageSoundEnabled" @click="toggleMessageSound">
-            {{ messageSoundEnabled ? '🔊 Message sound on · Turn off' : '🔇 Turn on message sound' }}
-          </button>
           <div class="new-chat-row">
             <select v-model="selectedMember" aria-label="Choose a member" class="member-select"
               :disabled="availableMembers.length === 0">

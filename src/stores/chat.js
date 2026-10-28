@@ -1,40 +1,26 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api, apiAction, apiList } from '../services/api.js'
-import { createIncomingMessageTracker, playMessageSound } from '../services/message-sound.js'
 
 export const useChatStore = defineStore('chat', () => {
   const activeChatId = ref(null)
   const conversations = ref([])
   const members = ref([])
-  let detectIncoming = createIncomingMessageTracker()
-  let latestFetch = 0
   for (const event of ['bcommunity-session-expired', 'bcommunity-session-changed']) {
     globalThis.addEventListener?.(event, () => {
       conversations.value = []; members.value = []; activeChatId.value = null
-      detectIncoming = createIncomingMessageTracker()
-      latestFetch++
     })
   }
   const activeChat = computed(() => conversations.value.find(c => c.id === activeChatId.value))
-  const fetchConversations = ({ silent = false } = {}) => {
-    const request = ++latestFetch
-    const load = async () => {
-      const rows = await apiList('/conversations')
-      if (request !== latestFetch) return conversations.value
-      const incoming = detectIncoming(rows)
-      if (incoming && !globalThis.document?.hidden && (globalThis.document?.hasFocus?.() ?? true)) {
-        playMessageSound()
-      }
-      conversations.value = rows.sort((a, b) =>
-        (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0) || b.id - a.id)
-      if (!conversations.value.some(c => c.id === activeChatId.value)) {
-        activeChatId.value = conversations.value[0]?.id ?? null
-      }
-      return conversations.value
+  const fetchConversations = () => apiAction(async () => {
+    const rows = await apiList('/conversations')
+    conversations.value = rows.sort((a, b) =>
+      (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0) || b.id - a.id)
+    if (!conversations.value.some(c => c.id === activeChatId.value)) {
+      activeChatId.value = conversations.value[0]?.id ?? null
     }
-    return silent ? load().catch(() => null) : apiAction(load)
-  }
+    return conversations.value
+  })
   const fetchMembers = () => apiAction(async () => {
     members.value = await apiList('/members')
     return members.value

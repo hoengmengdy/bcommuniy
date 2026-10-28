@@ -11,20 +11,14 @@ self.addEventListener('push', event => {
   } catch {
     data = { body: event.data?.text() }
   }
-  event.waitUntil((async () => {
-    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    const appIsVisible = windows.some(client => client.visibilityState === 'visible' && client.focused)
-    await self.registration.showNotification(data.title || 'Bcommunity', {
-      body: data.body || 'New message',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: data.url || 'bcommunity-message',
-      renotify: true,
-      // The open app plays its own chime; background pushes use the device's sound.
-      silent: appIsVisible,
-      data: { url: data.url || '/messages' },
-    })
-  })())
+  event.waitUntil(self.registration.showNotification(data.title || 'Bcommunity', {
+    body: data.body || 'New message',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: data.url || 'bcommunity-message',
+    renotify: true,
+    data: { url: data.url || '/messages' },
+  }))
 })
 
 self.addEventListener('notificationclick', event => {
