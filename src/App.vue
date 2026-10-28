@@ -1,14 +1,47 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from '@/components/Navbar.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import { usePostsStore } from '@/stores/posts'
+import { useChatStore } from '@/stores/chat'
+import { unlockMessageSound } from '@/services/message-sound'
 
 const route = useRoute()
 const store = usePostsStore()
+const chatStore = useChatStore()
 const canViewPage = computed(() => route.meta.public === true || Boolean(store.currentUser))
 const showNavbar = computed(() => store.currentUser && route.meta.public !== true && !route.meta.requiresAdmin)
+
+// Listen for messages throughout the signed-in app, including while reading the feed.
+let refreshTimer
+let refreshing = false
+async function refreshChats() {
+  if (!store.currentUser || document.hidden || refreshing) return
+  refreshing = true
+  try { await chatStore.fetchConversations({ silent: true }) }
+  finally { refreshing = false }
+}
+watch(() => store.currentUser?.id, id => {
+  clearInterval(refreshTimer)
+  if (id) {
+    refreshChats()
+    refreshTimer = setInterval(refreshChats, 2000)
+  }
+}, { immediate: true })
+onMounted(() => {
+  document.addEventListener('pointerdown', unlockMessageSound)
+  document.addEventListener('keydown', unlockMessageSound)
+  document.addEventListener('visibilitychange', refreshChats)
+  window.addEventListener('focus', refreshChats)
+})
+onUnmounted(() => {
+  clearInterval(refreshTimer)
+  document.removeEventListener('pointerdown', unlockMessageSound)
+  document.removeEventListener('keydown', unlockMessageSound)
+  document.removeEventListener('visibilitychange', refreshChats)
+  window.removeEventListener('focus', refreshChats)
+})
 
 // Installed phone apps keep the old page in memory for days; reload when a new version is deployed.
 const currentBundle = document.querySelector('script[type="module"][src*="/assets/index-"]')?.getAttribute('src')
