@@ -41,6 +41,15 @@ export async function enablePush() {
   return true
 }
 
+// A profile switch explicitly turns off notifications for this browser/device.
+export async function turnOffPush() {
+  const registration = await navigator.serviceWorker?.getRegistration()
+  const subscription = await registration?.pushManager.getSubscription()
+  if (!subscription) return
+  await api('/push/subscriptions', { method: 'DELETE', body: { endpoint: subscription.endpoint } })
+  if (!await subscription.unsubscribe()) throw new Error('Could not turn off notifications. Please try again.')
+}
+
 // On sign-out, stop this device receiving the previous user's messages.
 export async function disablePush() {
   try {

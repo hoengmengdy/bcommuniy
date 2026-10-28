@@ -8,6 +8,7 @@ import { api, apiAction } from '@/services/api'
 import PostCard from '@/components/PostCard.vue'
 import PostSkeleton from '@/components/PostSkeleton.vue'
 import EditProfileModal from '@/components/EditProfileModal.vue'
+import ProfileNotifications from '@/components/ProfileNotifications.vue'
 
 const store = usePostsStore()
 const uiStore = useUiStore()
@@ -143,6 +144,7 @@ const portfolioProjects = [
     <div class="profile-layout">
       <!-- Left Column: Portfolio -->
       <div class="sidebar">
+        <ProfileNotifications v-if="isOwnProfile" />
         <div class="portfolio-section glass-panel">
           <h2 class="section-title">Portfolio & Links</h2>
           <div class="portfolio-links">
