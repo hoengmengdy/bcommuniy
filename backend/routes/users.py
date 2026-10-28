@@ -10,7 +10,15 @@ bp = Blueprint("users", __name__)
 PROFILE_FIELDS = ("name", "bio", "role", "skills", "avatar", "phone")
 
 
+def guard_name_change(user, data):
+    """Only administrators may change display names; resending the current name is fine."""
+    if "name" in data and g.user.account_role != "Admin":
+        if not isinstance(data["name"], str) or data["name"].strip() != user.name:
+            raise APIError("Only an administrator can change names.", 403)
+
+
 def update_profile(user, data):
+    guard_name_change(user, data)
     for key, value in data.items():
         if key == "role":
             value = choice(value, key, ("Beginner", "Senior", "Teacher"))
@@ -55,6 +63,7 @@ def edit_user(user_id):
     data = body(("name", "email", "password", "role", "status"))
     if g.user.account_role != "Admin" and ("role" in data or "status" in data):
         raise APIError("Only administrators may change account roles or status.", 403)
+    guard_name_change(user, data)
     if user.account_role == "Admin" and (
         data.get("role", "Admin") != "Admin" or data.get("status", "Active") != "Active"
     ):

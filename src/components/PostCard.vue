@@ -1,8 +1,12 @@
 <script setup>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { usePostsStore } from '@/stores/posts'
+import { useUiStore } from '@/stores/ui'
 import CodeBlock from '@/components/CodeBlock.vue'
+import { timeAgo } from '@/utils/time'
+import { sharePost } from '@/utils/share'
+import SendPostModal from '@/components/SendPostModal.vue'
 
 const props = defineProps({
   post: {
@@ -12,14 +16,44 @@ const props = defineProps({
 })
 
 const store = usePostsStore()
+const uiStore = useUiStore()
 const router = useRouter()
+const route = useRoute()
 
-const formattedTime = computed(() => {
-  if (props.post.timestamp) {
-    return '2 hours ago' // Mocking time for UI match
+// ⋮ menu: only the author (or an admin) sees it, to delete a post made by mistake.
+const showMenu = ref(false)
+const menuRef = ref(null)
+const deleting = ref(false)
+const canDelete = computed(() => store.canDelete(props.post.author))
+const closeMenu = event => {
+  if (showMenu.value && menuRef.value && !menuRef.value.contains(event.target)) showMenu.value = false
+}
+onMounted(() => document.addEventListener('click', closeMenu))
+onUnmounted(() => document.removeEventListener('click', closeMenu))
+
+async function deletePost() {
+  showMenu.value = false
+  if (!window.confirm('Delete this post? This cannot be undone.')) return
+  deleting.value = true
+  const deleted = await store.deletePost(props.post.id)
+  deleting.value = false
+  if (!deleted) return
+  uiStore.addToast('Post deleted', 'success')
+  if (route.path.startsWith('/post/')) router.push('/')
+}
+
+const formattedTime = computed(() => timeAgo(props.post.timestamp) || 'Just now')
+
+// Heart is an outline until you like the post, then solid red.
+const liked = computed(() => store.isLiked(props.post))
+const showSend = ref(false)
+async function share() {
+  try {
+    if (await sharePost(props.post) === 'copied') uiStore.addToast('Link copied', 'success')
+  } catch {
+    uiStore.addToast('Could not share on this device.', 'error')
   }
-  return 'Just now'
-})
+}
 
 const formattedContent = computed(() => {
   if (!props.post.content) return ''
@@ -55,7 +89,7 @@ function viewPost(event) {
   <div class="post-card glass-panel" @click="viewPost">
     <!-- Header -->
     <div class="post-header">
-      <div class="author-block">
+      <div class="author-block clickable" @click.stop="router.push(`/profile/${post.author.id}`)">
         <img :src="post.author.avatar" alt="Avatar" class="avatar" />
         <div class="author-info">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -68,11 +102,17 @@ function viewPost(event) {
           </span>
         </div>
       </div>
-      <button class="icon-btn more-btn">
-        <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-          <path d="M128,72a16,16,0,1,0-16-16A16,16,0,0,0,128,72Zm0,40a16,16,0,1,0,16,16A16,16,0,0,0,128,112Zm0,72a16,16,0,1,0,16,16A16,16,0,0,0,128,184Z"/>
-        </svg>
-      </button>
+      <div v-if="canDelete" ref="menuRef" class="post-menu-wrap" @click.stop>
+        <button class="icon-btn more-btn" aria-label="Post options" :aria-expanded="showMenu" :disabled="deleting"
+          @click="showMenu = !showMenu">
+          <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M128,72a16,16,0,1,0-16-16A16,16,0,0,0,128,72Zm0,40a16,16,0,1,0,16,16A16,16,0,0,0,128,112Zm0,72a16,16,0,1,0,16,16A16,16,0,0,0,128,184Z"/>
+          </svg>
+        </button>
+        <div v-if="showMenu" class="post-menu" role="menu">
+          <button class="post-menu-item danger" role="menuitem" @click="deletePost">🗑️ Delete post</button>
+        </div>
+      </div>
     </div>
     
     <!-- Content Text -->
@@ -105,8 +145,10 @@ function viewPost(event) {
     <!-- Actions -->
     <div class="post-actions" @click.stop>
       <div class="action-group-left">
-        <button class="action-btn" @click="store.likePost(post.id)">
-          <svg class="action-icon" style="color: #ef4444;" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <button class="action-btn like-btn" :class="{ liked }" :aria-pressed="liked" aria-label="Like"
+          @click="store.likePost(post.id)">
+          <svg class="action-icon heart" viewBox="0 0 24 24" :fill="liked ? 'currentColor' : '#ffffff'" stroke="currentColor"
+            stroke-width="2" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
           <span class="count">{{ post.likes || 0 }}</span>
@@ -117,19 +159,20 @@ function viewPost(event) {
           </svg>
           <span class="count">{{ post.comments?.length || 0 }}</span>
         </button>
-        <button class="action-btn">
+        <button class="action-btn" aria-label="Share" @click="share">
           <svg class="action-icon" viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
             <path d="M237.66,106.34l-80,80A8,8,0,0,1,144,180.69V136c-51.52,0-91.82,18.06-118,52.88A8,8,0,0,1,14.61,185C27.46,128.84,65.65,88,144,88V43.31a8,8,0,0,1,13.66-5.65l80,80A8,8,0,0,1,237.66,106.34ZM160,157.37V184l56-56-56-56V98.63a8,8,0,0,1-8,8C78.47,106.63,44.75,138,32.22,185.34C58.11,152,95.53,130.63,152,130.63A8,8,0,0,1,160,138.63Z"/>
           </svg>
         </button>
       </div>
-      <button class="action-btn">
+      <button class="action-btn" aria-label="Send to a member" @click="showSend = true">
         <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
           <line x1="22" y1="2" x2="11" y2="13"></line>
           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
         </svg>
       </button>
     </div>
+    <SendPostModal v-if="showSend" :post="post" @close="showSend = false" />
   </div>
 </template>
 
@@ -151,6 +194,14 @@ function viewPost(event) {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+}
+
+.author-block.clickable {
+  cursor: pointer;
+}
+
+.author-block.clickable:hover .author-name {
+  text-decoration: underline;
 }
 
 .author-block {
@@ -213,8 +264,49 @@ function viewPost(event) {
 }
 
 .more-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
+}
+
+.post-menu-wrap {
+  position: relative;
+}
+
+.post-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  padding: 0.35rem;
+  z-index: 50;
+}
+
+.post-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 0.8rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.post-menu-item.danger {
+  color: #dc2626;
+}
+
+.post-menu-item.danger:hover {
+  background: #fef2f2;
 }
 
 .post-text {
@@ -289,6 +381,25 @@ function viewPost(event) {
 .action-icon {
   width: 20px;
   height: 20px;
+}
+
+.like-btn .heart {
+  color: #64748b;
+}
+
+.like-btn.liked .heart {
+  color: #ef4444;
+  animation: heartPop 0.3s ease-out;
+}
+
+.like-btn.liked .count {
+  color: #ef4444;
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
 .count {

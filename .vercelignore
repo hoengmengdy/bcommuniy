@@ -1,0 +1,22 @@
+# Upload only the Vue frontend and the Flask API code; never secrets, databases, or local environments.
+/*
+!/src
+!/public
+!/index.html
+!/package.json
+!/package-lock.json
+!/vite.config.js
+!/jsconfig.json
+!/vercel.json
+!/api
+!/requirements.txt
+!/backend
+/backend/venv
+/backend/tests
+/backend/.env
+/backend/.env.*
+/backend/database/*
+!/backend/database/.gitkeep
+**/__pycache__
+**/*.pyc
+/backend/setup_push_key.py

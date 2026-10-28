@@ -37,9 +37,13 @@ def test_auth_profile_users(client, app, accounts, create_account):
     headers = {"Authorization": "Bearer " + logged_in["token"]}
     assert call(client, "GET", "/api/auth/me", headers=headers)["id"] == user_id
     assert call(client, "GET", "/api/profile", headers=headers)["id"] == user_id
+    # Members cannot rename themselves (resending the current name is fine); administrators can.
+    assert client.put("/api/profile", headers=headers, json={"name": "Renamed Myself"}).status_code == 403
+    assert client.put(f"/api/users/{user_id}", headers=headers, json={"name": "Renamed Myself"}).status_code == 403
     profile = call(client, "PUT", "/api/profile", headers=headers,
-                   data={"name": "Updated", "bio": "Bio", "role": "Teacher", "skills": ["Python"]})
+                   data={"name": "Existing Member", "bio": "Bio", "role": "Teacher", "skills": ["Python"]})
     assert profile["role"] == "Teacher" and profile["isAdmin"] is False
+    call(client, "PUT", f"/api/users/{user_id}", headers=admin["headers"], data={"name": "Updated"})
     assert call(client, "GET", f"/api/users/{user_id}", headers=owner["headers"])["name"] == "Updated"
     assert "email" not in call(client, "GET", f"/api/users/{user_id}", headers=owner["headers"])
     call(client, "GET", "/api/users", headers=admin["headers"])
@@ -95,7 +99,8 @@ def test_comments_likes_answers(client, accounts):
     call(client, "PUT", f"/api/comments/{cid}", headers=other, data={"text": "Better answer"})
     assert client.put(f"/api/comments/{cid}", headers=owner, json={"text": "Steal"}).status_code == 403
     assert call(client, "POST", f"/api/posts/{pid}/like", headers=other)["likes"] == 1
-    assert call(client, "POST", f"/api/posts/{pid}/like", headers=other)["likes"] == 1
+    liked = call(client, "POST", f"/api/posts/{pid}/like", headers=other)
+    assert liked["likes"] == 1 and liked["likedBy"] == [accounts["other"]["id"]]
     assert call(client, "DELETE", f"/api/posts/{pid}/like", headers=other)["likes"] == 0
     assert client.post(f"/api/posts/{pid}/solve", headers=other, json={"commentId": cid}).status_code == 403
     solved = call(client, "POST", f"/api/posts/{pid}/solve", headers=owner, data={"commentId": cid})
@@ -317,6 +322,85 @@ def test_account_deletion_cleans_direct_conversations(client, app, accounts):
         assert db.session.get(Conversation, chat["id"]) is None
         assert db.session.scalar(db.select(db.func.count()).select_from(Message)) == 0
         assert db.session.scalar(db.select(db.func.count()).select_from(ConversationMember)) == 0
+
+
+def test_push_notifications_and_media_messages(client, accounts, monkeypatch):
+    import base64
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from backend.services import push
+    owner, other = accounts["owner"], accounts["other"]
+    assert call(client, "GET", "/api/push/key", headers=owner["headers"])["publicKey"] is None
+    private = ec.generate_private_key(ec.SECP256R1()).private_numbers().private_value.to_bytes(32, "big")
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", base64.urlsafe_b64encode(private).rstrip(b"=").decode())
+    sent = []
+    monkeypatch.setattr(push, "webpush", lambda info, data, **kwargs: sent.append((info["endpoint"], data)))
+    key = call(client, "GET", "/api/push/key", headers=owner["headers"])["publicKey"]
+    assert len(base64.urlsafe_b64decode(key + "=")) == 65
+    device = {"endpoint": "https://push.example.com/device-1", "keys": {"p256dh": "p", "auth": "a"}}
+    call(client, "POST", "/api/push/subscriptions", 201, headers=other["headers"], data=device)
+    assert client.post("/api/push/subscriptions", headers=other["headers"],
+                       json={**device, "endpoint": "http://insecure.example.com"}).status_code == 400
+    chat = call(client, "POST", "/api/conversations", 201, headers=owner["headers"],
+                data={"participantId": other["id"]})
+    call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
+         headers=owner["headers"], data={"text": "Ping"})
+    assert sent and sent[-1][0] == device["endpoint"] and '"Ping"' in sent[-1][1]
+    photo = {"name": "a.jpg", "size": "1 KB", "kind": "image",
+             "url": "https://abc123.public.blob.vercel-storage.com/chat/image-1-x.jpg"}
+    message = call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
+                   headers=owner["headers"], data={"text": "", "attachment": photo})
+    assert message["type"] == "image" and message["attachment"]["url"] == photo["url"]
+    assert client.post(f"/api/conversations/{chat['id']}/messages", headers=owner["headers"],
+                       json={"text": "", "attachment": {**photo, "url": "https://evil.example/chat/x.jpg"}}
+                       ).status_code == 400
+    sent.clear()
+    call(client, "DELETE", "/api/push/subscriptions", headers=other["headers"], data={"endpoint": device["endpoint"]})
+    call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
+         headers=owner["headers"], data={"text": "Nobody is subscribed now"})
+    assert sent == []
+
+
+def test_message_reactions_replies_and_edits(client, accounts):
+    owner, other, outsider = accounts["owner"], accounts["other"], accounts["outsider"]
+    chat = call(client, "POST", "/api/conversations", 201, headers=owner["headers"],
+                data={"participantId": other["id"]})
+    first = call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
+                 headers=owner["headers"], data={"text": "Hello"})
+    assert first["reactions"] == [] and first["replyTo"] is None and first["edited"] is False
+    reply = call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
+                 headers=other["headers"], data={"text": "Hi!", "replyToId": first["id"]})
+    assert reply["replyTo"]["id"] == first["id"] and reply["replyTo"]["text"] == "Hello"
+    other_chat = call(client, "POST", "/api/conversations", 201, headers=owner["headers"],
+                      data={"participantId": outsider["id"]})
+    assert client.post(f"/api/conversations/{other_chat['id']}/messages", headers=owner["headers"],
+                       json={"text": "x", "replyToId": first["id"]}).status_code == 400
+    reacted = call(client, "PUT", f"/api/messages/{first['id']}/reaction", headers=other["headers"],
+                   data={"emoji": "❤️"})
+    assert reacted["reactions"] == [{"emoji": "❤️", "count": 1, "mine": True}]
+    call(client, "PUT", f"/api/messages/{first['id']}/reaction", headers=owner["headers"], data={"emoji": "❤️"})
+    changed = call(client, "PUT", f"/api/messages/{first['id']}/reaction", headers=other["headers"],
+                   data={"emoji": "😆"})
+    assert {r["emoji"]: r["count"] for r in changed["reactions"]} == {"❤️": 1, "😆": 1}
+    removed = call(client, "PUT", f"/api/messages/{first['id']}/reaction", headers=other["headers"],
+                   data={"emoji": None})
+    assert removed["reactions"] == [{"emoji": "❤️", "count": 1, "mine": False}]
+    assert client.put(f"/api/messages/{first['id']}/reaction", headers=other["headers"],
+                      json={"emoji": "<b>"}).status_code == 400
+    assert client.put(f"/api/messages/{first['id']}/reaction", headers=outsider["headers"],
+                      json={"emoji": "👍"}).status_code == 403
+    edited = call(client, "PUT", f"/api/messages/{first['id']}", headers=owner["headers"], data={"text": "Hello!"})
+    assert edited["edited"] is True and edited["text"] == "Hello!"
+    call(client, "DELETE", f"/api/messages/{first['id']}", headers=owner["headers"])
+    thread = call(client, "GET", f"/api/conversations/{chat['id']}/messages", headers=other["headers"])
+    assert [m["text"] for m in thread] == ["Hi!"] and thread[0]["replyTo"] is None
+    # The conversation with the newest message is listed first.
+    call(client, "POST", f"/api/conversations/{other_chat['id']}/messages", 201,
+         headers=owner["headers"], data={"text": "Newer"})
+    assert call(client, "GET", "/api/conversations", headers=owner["headers"])[0]["id"] == other_chat["id"]
+    call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
+         headers=other["headers"], data={"text": "Newest"})
+    assert call(client, "GET", "/api/conversations", headers=owner["headers"])[0]["id"] == chat["id"]
 
 
 def test_z_every_api_method_has_been_tested(app):

@@ -42,6 +42,11 @@ function replyToComment(comment) {
   nextTick(() => inputRef.value?.focus())
 }
 
+async function deleteComment(comment) {
+  if (!window.confirm('Delete this comment? Replies to it are deleted too.')) return
+  if (await store.deleteComment(props.post.id, comment.id)) uiStore.addToast('Comment deleted', 'success')
+}
+
 function cancelReply() {
   replyingTo.value = null
   commentText.value = ''
@@ -96,7 +101,7 @@ function formatComment(text) {
           <div class="comment-content">
             <div class="comment-bubble">
               <span class="comment-author">
-                {{ comment.author.name }} 
+                <RouterLink :to="`/profile/${comment.author.id}`" class="author-link">{{ comment.author.name }}</RouterLink>
                 <span v-if="comment.author.role" class="author-role-badge">{{ comment.author.role }}</span>
               </span>
               <p class="comment-text" v-html="formatComment(comment.text)"></p>
@@ -105,6 +110,7 @@ function formatComment(text) {
             <div class="comment-meta">
               <span class="comment-time">{{ formatTime(comment.timestamp) }}</span>
               <button class="reply-btn" @click="replyToComment(comment)">Reply</button>
+              <button v-if="store.canDelete(comment.author)" class="reply-btn delete-btn" @click="deleteComment(comment)">Delete</button>
               <button v-if="isPostAuthor && !props.post.isSolved && props.post.isQuestion" class="mark-solved-btn" @click="store.markAsSolved(props.post.id, comment.id)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 6L9 17l-5-5"></path></svg>
                 Mark as Best Answer
@@ -128,7 +134,7 @@ function formatComment(text) {
             <div class="comment-content">
               <div class="comment-bubble">
                 <span class="comment-author">
-                  {{ reply.author.name }}
+                  <RouterLink :to="`/profile/${reply.author.id}`" class="author-link">{{ reply.author.name }}</RouterLink>
                   <span v-if="reply.author.role" class="author-role-badge">{{ reply.author.role }}</span>
                 </span>
                 <p class="comment-text" v-html="formatComment(reply.text)"></p>
@@ -137,6 +143,7 @@ function formatComment(text) {
               <div class="comment-meta">
                 <span class="comment-time">{{ formatTime(reply.timestamp) }}</span>
                 <button class="reply-btn" @click="replyToComment(comment)">Reply</button>
+                <button v-if="store.canDelete(reply.author)" class="reply-btn delete-btn" @click="deleteComment(reply)">Delete</button>
                 <button v-if="isPostAuthor && !props.post.isSolved && props.post.isQuestion" class="mark-solved-btn" @click="store.markAsSolved(props.post.id, reply.id)">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 6L9 17l-5-5"></path></svg>
                   Mark as Best Answer
@@ -325,6 +332,23 @@ function formatComment(text) {
 
 .reply-btn:hover {
   color: #1a1a1a;
+}
+
+.author-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.author-link:hover {
+  text-decoration: underline;
+}
+
+.delete-btn {
+  color: #ef4444;
+}
+
+.delete-btn:hover {
+  color: #b91c1c;
 }
 
 .mark-solved-btn {

@@ -10,27 +10,45 @@ const route = useRoute()
 const signOut = () => store.logout()
 const notificationWrapperRef = ref(null)
 
+const showProfileMenu = ref(false)
+const profileWrapperRef = ref(null)
+
 const closeDropdown = (e) => {
   if (showNotifications.value && notificationWrapperRef.value && !notificationWrapperRef.value.contains(e.target)) {
     showNotifications.value = false
   }
+  if (showProfileMenu.value && profileWrapperRef.value && !profileWrapperRef.value.contains(e.target)) {
+    showProfileMenu.value = false
+  }
+}
+
+// Publish the navbar's real height so full-height pages (Messages) can fill the rest exactly.
+const navRef = ref(null)
+let resizeObserver
+const publishHeight = () => {
+  if (navRef.value) document.documentElement.style.setProperty('--navbar-height', navRef.value.offsetHeight + 'px')
 }
 
 onMounted(() => {
   document.addEventListener('click', closeDropdown)
+  publishHeight()
+  resizeObserver = new ResizeObserver(publishHeight)
+  resizeObserver.observe(navRef.value)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', closeDropdown)
+  resizeObserver?.disconnect()
 })
 
 watch(route, () => {
   showNotifications.value = false
+  showProfileMenu.value = false
 })
 </script>
 
 <template>
-  <nav class="navbar-wrapper">
+  <nav ref="navRef" class="navbar-wrapper">
     <div class="navbar-content">
       
       <!-- Brand -->
@@ -72,16 +90,29 @@ watch(route, () => {
           Sign In
         </RouterLink>
         
-        <RouterLink v-if="store.currentUser?.isAdmin" to="/admin" class="btn">Admin</RouterLink>
-        <button v-if="store.currentUser" class="btn" @click="signOut">Sign Out</button>
-        <RouterLink v-if="store.currentUser" to="/profile" class="user-profile">
-          <img :src="store.currentUser.avatar" alt="User Avatar" class="avatar" />
-          <div class="badge">
-            <svg viewBox="0 0 256 256" fill="white" xmlns="http://www.w3.org/2000/svg">
-              <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/>
-            </svg>
+        <div v-if="store.currentUser" class="profile-wrapper" ref="profileWrapperRef">
+          <button class="user-profile" aria-label="Account menu" :aria-expanded="showProfileMenu"
+            @click="showProfileMenu = !showProfileMenu">
+            <img :src="store.currentUser.avatar" alt="User Avatar" class="avatar" />
+            <div class="badge">
+              <svg viewBox="0 0 256 256" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/>
+              </svg>
+            </div>
+          </button>
+          <div v-if="showProfileMenu" class="profile-menu" role="menu">
+            <div class="profile-menu-header">
+              <img :src="store.currentUser.avatar" alt="" class="avatar" />
+              <div class="profile-menu-who">
+                <strong>{{ store.currentUser.name }}</strong>
+                <span>{{ store.currentUser.email }}</span>
+              </div>
+            </div>
+            <RouterLink to="/profile" class="profile-menu-item" role="menuitem">👤 My Profile</RouterLink>
+            <RouterLink v-if="store.currentUser.isAdmin" to="/admin" class="profile-menu-item" role="menuitem">🛠️ Admin</RouterLink>
+            <button class="profile-menu-item sign-out" role="menuitem" @click="signOut">🚪 Sign Out</button>
           </div>
-        </RouterLink>
+        </div>
       </div>
       
     </div>
@@ -135,6 +166,11 @@ watch(route, () => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.brand-logo svg {
+  width: 100%;
+  height: 100%;
 }
 
 .brand-text {
@@ -231,10 +267,105 @@ watch(route, () => {
   height: 20px;
 }
 
+.profile-wrapper {
+  position: relative;
+}
+
 .user-profile {
   position: relative;
   margin-left: 0.5rem;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  display: block;
+  border-radius: 50%;
+}
+
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 240px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  padding: 0.4rem;
+  z-index: 200;
+  animation: menuFade 0.2s ease-out;
+}
+
+@keyframes menuFade {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.75rem 0.8rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 0.3rem;
+}
+
+.profile-menu-header .avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.profile-menu-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-menu-who strong {
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.profile-menu-who span {
+  font-size: 0.78rem;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.8rem 0.75rem;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.profile-menu-item:hover,
+.profile-menu-item.router-link-active {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.profile-menu-item.sign-out {
+  color: #dc2626;
+}
+
+.profile-menu-item.sign-out:hover {
+  background: #fef2f2;
 }
 
 .avatar {
@@ -275,27 +406,61 @@ watch(route, () => {
     margin-bottom: 0;
   }
   
+  /* One compact row on phones; clear the iPhone notch/status bar in the installed app. */
   .navbar-content {
-    padding: 0.8rem 1rem;
+    flex-wrap: nowrap;
+    padding: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0.5rem;
     gap: 0.5rem;
   }
-  
+
   .brand {
     order: 1;
     flex-shrink: 0;
   }
-  
+
   .right-actions {
     order: 2;
-    gap: 0.5rem;
+    gap: 0.4rem;
     flex-shrink: 0;
   }
 
+  /* The search box isn't wired to anything yet; on phones it only costs space. */
   .search-bar {
-    order: 3;
-    flex: 1 1 100%;
-    max-width: 100%;
-    margin: 0.5rem 0 0 0;
+    display: none;
+  }
+
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .icon-btn svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  /* Let the notifications panel position against the whole navbar, not the small bell. */
+  .notification-wrapper {
+    position: static;
+  }
+
+  /* No hover lift on touch screens; it leaves the active icon misaligned. */
+  .icon-btn:hover,
+  .active-icon {
+    transform: none;
+  }
+
+  .user-profile {
+    margin-left: 0.15rem;
+  }
+
+  .user-profile .avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .profile-menu {
+    width: min(260px, calc(100vw - 1.5rem));
   }
 }
 </style>

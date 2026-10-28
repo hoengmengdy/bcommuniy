@@ -77,6 +77,7 @@ class Post(db.Model):
                 "image": self.image, "projectUrl": self.project_url,
                 "isQuestion": self.is_question, "isSolved": self.is_solved,
                 "timestamp": iso(self.created_at), "likes": len(self.likes),
+                "likedBy": [like.user_id for like in self.likes],
                 "comments": [c.to_dict() for c in self.comments]}
 
     def question_dict(self):
@@ -130,7 +131,8 @@ class Conversation(db.Model):
         last = self.messages[-1] if self.messages else None
         return {"id": self.id, "name": other.name, "avatar": other.to_dict()["avatar"], "phone": other.phone,
                 "participantIds": [m.user_id for m in self.members],
-                "lastMessage": last.text if last else "",
+                "lastMessage": (last.text or {"image": "📷 Photo", "video": "🎬 Video"}.get(last.type, ""))
+                if last else "",
                 "time": iso(last.created_at) if last else iso(self.created_at),
                 "unread": sum(1 for m in self.messages if m.sender_id != viewer_id and not m.is_read),
                 "messages": [m.to_dict(viewer_id) for m in self.messages]}
@@ -156,11 +158,37 @@ class Message(db.Model):
     type = db.Column(db.String(20), nullable=False, default="text")
     is_read = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False, default=now)
+    reply_to_id = db.Column(db.Integer, db.ForeignKey("messages.id", ondelete="SET NULL"), nullable=True)
+    edited_at = db.Column(db.DateTime, nullable=True)
+    sender = db.relationship(User)
+    reply_to = db.relationship("Message", remote_side=[id])
+    reactions = db.relationship("MessageReaction", cascade="all, delete-orphan", passive_deletes=True,
+                                lazy="selectin", order_by="MessageReaction.created_at")
 
     def to_dict(self, viewer_id):
+        reply = self.reply_to
+        summary = {}
+        for reaction in self.reactions:
+            entry = summary.setdefault(reaction.emoji, {"emoji": reaction.emoji, "count": 0, "mine": False})
+            entry["count"] += 1
+            entry["mine"] = entry["mine"] or reaction.user_id == viewer_id
         return {"id": self.id, "senderId": "me" if self.sender_id == viewer_id else self.sender_id,
                 "text": self.text, "type": self.type, "time": iso(self.created_at),
-                "attachment": self.attachment, "status": "read" if self.is_read else "sent"}
+                "attachment": self.attachment, "status": "read" if self.is_read else "sent",
+                "edited": self.edited_at is not None,
+                "reactions": list(summary.values()),
+                "replyTo": {"id": reply.id, "text": reply.text[:140], "type": reply.type,
+                            "senderName": "You" if reply.sender_id == viewer_id else reply.sender.name}
+                if reply else None}
+
+
+class MessageReaction(db.Model):
+    """One emoji reaction per person per message, like Messenger."""
+    __tablename__ = "message_reactions"
+    message_id = db.Column(db.Integer, db.ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    emoji = db.Column(db.String(16), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=now)
 
 
 class Task(db.Model):
@@ -260,3 +288,17 @@ class Notification(db.Model):
     def to_dict(self):
         return {"id": self.id, "user": self.actor.to_dict(), "type": self.type,
                 "content": self.content, "isRead": self.is_read, "time": iso(self.created_at)}
+
+
+class PushSubscription(db.Model):
+    """A browser/phone that asked for chat notifications (Web Push)."""
+    __tablename__ = "push_subscriptions"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    endpoint = db.Column(db.String(1000), nullable=False, unique=True)
+    p256dh = db.Column(db.String(200), nullable=False)
+    auth = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=now)
+
+    def info(self):
+        return {"endpoint": self.endpoint, "keys": {"p256dh": self.p256dh, "auth": self.auth}}

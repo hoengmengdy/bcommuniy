@@ -1,16 +1,43 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { usePostsStore } from '@/stores/posts'
 import { useUiStore } from '@/stores/ui'
+import { useChatStore } from '@/stores/chat'
+import { api, apiAction } from '@/services/api'
 import PostCard from '@/components/PostCard.vue'
 import PostSkeleton from '@/components/PostSkeleton.vue'
 import EditProfileModal from '@/components/EditProfileModal.vue'
 
 const store = usePostsStore()
 const uiStore = useUiStore()
+const chatStore = useChatStore()
+const route = useRoute()
+const router = useRouter()
 const isLoading = ref(true)
 const showEditModal = ref(false)
 const isSaving = ref(false)
+
+// /profile is your own page; /profile/:id shows any member's public profile.
+const profileId = computed(() => (route.params.id ? Number(route.params.id) : store.currentUser?.id))
+const isOwnProfile = computed(() => profileId.value === store.currentUser?.id)
+const viewedUser = ref(null)
+const profileUser = computed(() => (isOwnProfile.value ? store.currentUser : viewedUser.value))
+const notFound = ref(false)
+
+watch(profileId, async id => {
+  if (!id || isOwnProfile.value) return
+  viewedUser.value = null
+  notFound.value = false
+  const user = await apiAction(async () => (await api('/users/' + id)).data)
+  if (user) viewedUser.value = user
+  else notFound.value = true
+}, { immediate: true })
+
+async function messageUser() {
+  const chat = await chatStore.startConversation(profileId.value)
+  if (chat) router.push({ path: '/messages', query: { c: chat.id } })
+}
 
 async function saveProfile(data) {
   if (isSaving.value) return
@@ -29,10 +56,16 @@ onMounted(() => {
 })
 
 const userPosts = computed(() => {
-  return store.posts.filter(post => post.author.id === store.currentUser.id)
+  return store.posts.filter(post => post.author.id === profileId.value)
 })
 
-const userSkills = computed(() => store.currentUser.skills || [])
+const userSkills = computed(() => profileUser.value?.skills || [])
+const profileRole = computed(() => profileUser.value?.profileRole || profileUser.value?.role || 'Beginner')
+
+// There is no follow system yet: these are display-only numbers, set per account on the owner's request
+// (user 1 = dy@bcommunity.com, user 4 = heng@bcommunity.com).
+const DISPLAY_FOLLOWERS = { 1: '1M', 4: '1B' }
+const followerCount = computed(() => DISPLAY_FOLLOWERS[profileId.value] || '128')
 
 const userBadges = [
   { icon: '🚀', name: 'New Hire', color: '#10b981' },
@@ -45,29 +78,35 @@ const portfolioProjects = [
 </script>
 
 <template>
-  <div v-if="store.currentUser" class="profile-view animate-fade-in">
+  <div v-if="notFound" class="profile-view empty-state glass-panel text-muted">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+    <h3>This profile doesn't exist</h3>
+    <RouterLink to="/" class="btn btn-secondary">Back to feed</RouterLink>
+  </div>
+  <div v-else-if="profileUser" class="profile-view animate-fade-in">
     <div class="profile-header glass-panel">
       <div class="cover-photo"></div>
-      
+
       <div class="profile-info-wrapper">
         <div class="avatar-container">
-          <img :src="store.currentUser.avatar" alt="Avatar" class="profile-avatar" />
+          <img :src="profileUser.avatar" alt="Avatar" class="profile-avatar" />
         </div>
-        
+
         <div class="profile-actions">
-          <button class="btn btn-secondary" @click="showEditModal = true">Edit Profile</button>
+          <button v-if="isOwnProfile" class="btn btn-secondary" @click="showEditModal = true">Edit Profile</button>
+          <button v-else class="btn btn-primary" @click="messageUser">💬 Message</button>
         </div>
 
         <div class="profile-details">
-          <h1 class="profile-name">{{ store.currentUser.name }}</h1>
+          <h1 class="profile-name">{{ profileUser.name }}</h1>
           <p class="profile-bio text-muted">
-            {{ store.currentUser.bio }}
+            {{ profileUser.bio }}
           </p>
-          
+
           <div class="badges">
             <div class="badge" style="background-color: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
               <span class="badge-icon">🎓</span>
-              <span class="badge-name">{{ store.currentUser.role || 'Beginner' }}</span>
+              <span class="badge-name">{{ profileRole }}</span>
             </div>
             <div v-for="badge in userBadges" :key="badge.name" class="badge" :style="{ backgroundColor: badge.color + '15', color: badge.color, borderColor: badge.color + '40' }">
               <span class="badge-icon">{{ badge.icon }}</span>
@@ -85,7 +124,7 @@ const portfolioProjects = [
               <span class="stat-label">Posts</span>
             </div>
             <div class="stat-box">
-              <span class="stat-number">128</span>
+              <span class="stat-number">{{ followerCount }}</span>
               <span class="stat-label">Followers</span>
             </div>
             <div class="stat-box">
@@ -93,7 +132,7 @@ const portfolioProjects = [
               <span class="stat-label">Following</span>
             </div>
             <div class="stat-box">
-              <span class="stat-number">{{ store.currentUser.reputation || 0 }}</span>
+              <span class="stat-number">{{ profileUser.reputation || 0 }}</span>
               <span class="stat-label">Reputation</span>
             </div>
           </div>
@@ -120,7 +159,7 @@ const portfolioProjects = [
 
       <!-- Right Column: Posts -->
       <div class="user-content">
-        <h2 class="section-title">Your Posts</h2>
+        <h2 class="section-title">{{ isOwnProfile ? 'Your Posts' : 'Posts by ' + profileUser.name }}</h2>
         
         <div v-if="isLoading" class="feed">
           <PostSkeleton v-for="i in 2" :key="i" />
@@ -138,15 +177,18 @@ const portfolioProjects = [
           <div v-else class="empty-state glass-panel text-muted">
             <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
             <h3>No posts yet</h3>
-            <p>You haven't posted anything yet. Share your first experience!</p>
+            <p v-if="isOwnProfile">You haven't posted anything yet. Share your first experience!</p>
+            <p v-else>{{ profileUser.name }} hasn't posted anything yet.</p>
           </div>
         </template>
       </div>
     </div>
     
-    <EditProfileModal 
+    <EditProfileModal
+      v-if="isOwnProfile"
       :is-open="showEditModal"
       :initial-name="store.currentUser.name"
+      :can-edit-name="store.currentUser.isAdmin"
       :initial-avatar="store.currentUser.avatar"
       :is-saving="isSaving"
       :initial-bio="store.currentUser.bio"
@@ -160,6 +202,9 @@ const portfolioProjects = [
 
 <style scoped>
 .profile-view {
+  /* Explicit width: otherwise long code lines in posts stretch the page past the phone screen. */
+  width: 100%;
+  min-width: 0;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -292,7 +337,7 @@ const portfolioProjects = [
 
 .profile-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 2rem;
 }
 
@@ -363,7 +408,10 @@ const portfolioProjects = [
 
 @media (max-width: 768px) {
   .profile-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .badges {
+    flex-wrap: wrap;
   }
   .cover-photo {
     height: 140px;

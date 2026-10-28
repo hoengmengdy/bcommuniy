@@ -1,8 +1,11 @@
 import { useUiStore } from '../stores/ui.js'
 
 const API_URL = (import.meta.env?.VITE_API_URL || '/api').replace(/\/$/, '')
-let token = globalThis.sessionStorage?.getItem('bcommunity-token') || ''
-let expiresAt = Number(globalThis.sessionStorage?.getItem('bcommunity-token-expires-at')) || 0
+// localStorage keeps the sign-in after the browser or installed app is closed;
+// the token's own expiry and server-side revocation still end the session.
+const storage = globalThis.localStorage ?? globalThis.sessionStorage
+let token = storage?.getItem('bcommunity-token') || ''
+let expiresAt = Number(storage?.getItem('bcommunity-token-expires-at')) || 0
 let expiryTimer
 let sessionVersion = 0
 
@@ -19,15 +22,15 @@ export function setToken(value, expiration = 0) {
   const nextToken = value || ''
   if (nextToken !== token) sessionVersion++
   token = nextToken
-  if (token) globalThis.sessionStorage?.setItem('bcommunity-token', token)
-  else globalThis.sessionStorage?.removeItem('bcommunity-token')
+  if (token) storage?.setItem('bcommunity-token', token)
+  else storage?.removeItem('bcommunity-token')
   setSessionExpiry(expiration)
 }
 
 export function setSessionExpiry(expiration) {
   expiresAt = token && Number.isFinite(Number(expiration)) ? Number(expiration) : 0
-  if (expiresAt > 0) globalThis.sessionStorage?.setItem('bcommunity-token-expires-at', String(expiresAt))
-  else globalThis.sessionStorage?.removeItem('bcommunity-token-expires-at')
+  if (expiresAt > 0) storage?.setItem('bcommunity-token-expires-at', String(expiresAt))
+  else storage?.removeItem('bcommunity-token-expires-at')
   scheduleExpiry()
 }
 
@@ -41,6 +44,7 @@ export function hasToken() {
   return Boolean(token)
 }
 export const getSessionVersion = () => sessionVersion
+export const authHeaders = () => (hasToken() ? { Authorization: 'Bearer ' + token } : {})
 
 export async function api(endpoint, { method = 'GET', body, ...options } = {}) {
   const publicRequest = method.toUpperCase() === 'POST' && endpoint === '/auth/login'

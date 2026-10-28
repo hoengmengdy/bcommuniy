@@ -50,3 +50,6 @@ __pycache__/
 backend/database/*.db
 backend/database/*.db-*
 backend/database/*.sqlite*
+
+.vercel
+.env.local

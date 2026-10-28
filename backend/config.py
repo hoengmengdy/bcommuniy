@@ -36,7 +36,9 @@ def load_config():
     if production and make_url(database_url).get_backend_name() != "postgresql":
         raise RuntimeError("Production requires PostgreSQL; container-local SQLite is not persistent.")
     rate_storage = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
-    if production and not rate_storage.startswith(("redis://", "rediss://")):
+    if production and not rate_storage.startswith(("redis://", "rediss://")) and not (
+        rate_storage == "memory://" and os.environ.get("RATELIMIT_ALLOW_MEMORY") == "1"
+    ):
         raise RuntimeError("Set RATELIMIT_STORAGE_URI to shared Redis storage in production.")
     token_age = int(os.environ.get("TOKEN_MAX_AGE", "86400"))
     if token_age <= 0:

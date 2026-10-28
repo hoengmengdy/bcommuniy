@@ -106,9 +106,9 @@ try {
   await page.getByLabel('Email Address', { exact: true }).fill('member@example.com')
   await page.getByRole('button', { name: 'Sign In', exact: true }).click()
   await expect(page).toHaveURL(origin + '/questions?tab=all#answers')
-  await expect(page.getByRole('button', { name: 'Sign Out', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Account menu', exact: true })).toBeVisible()
   console.log('PASS: Login has no signup option; direct signup URLs and anonymous registration APIs are blocked.')
-  const token = await page.evaluate(() => sessionStorage.getItem('bcommunity-token'))
+  const token = await page.evaluate(() => localStorage.getItem('bcommunity-token'))
   const headers = { Authorization: 'Bearer ' + token }
   assert.ok([404, 405].includes((await page.request.post(origin + '/api/auth/register', { headers, data: {} })).status()))
   const created = await page.request.post(origin + '/api/posts', { headers,
@@ -118,12 +118,12 @@ try {
   for (const protectedPath of [...paths.filter(p => !p.startsWith('/admin') && p !== '/post/1'), '/post/' + post.id]) {
     await page.goto(origin + protectedPath)
     await expect(page).toHaveURL(origin + protectedPath)
-    await expect(page.getByRole('button', { name: 'Sign Out', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Account menu', exact: true })).toBeVisible()
   }
   await expect(page.getByText('Protected browser test content', { exact: true })).toBeVisible()
   await page.reload()
   await expect(page.getByText('Protected browser test content', { exact: true })).toBeVisible()
-  assert.equal(await page.evaluate(() => sessionStorage.getItem('bcommunity-token')), token)
+  assert.equal(await page.evaluate(() => localStorage.getItem('bcommunity-token')), token)
   await page.goto(origin + '/admin/users')
   await expect(page).toHaveURL(origin + '/')
   assert.equal((await page.request.get(origin + '/api/users', { headers })).status(), 403)
@@ -163,11 +163,12 @@ try {
     await new Promise(resolve => { releaseLogout = resolve })
     await route.continue()
   })
-  await page.getByRole('button', { name: 'Sign Out', exact: true }).click()
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Sign Out' }).click()
   await started
   await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible()
   await expect(page.locator('.navbar-wrapper, .home-view')).toHaveCount(0)
-  assert.equal(await page.evaluate(() => sessionStorage.getItem('bcommunity-token')), null)
+  assert.equal(await page.evaluate(() => localStorage.getItem('bcommunity-token')), null)
   const logoutDone = page.waitForResponse(response => response.url().endsWith('/api/auth/logout'))
   releaseLogout()
   assert.equal((await logoutDone).status(), 200)
@@ -197,7 +198,7 @@ try {
 
   // Exercise the real expiry timer without waiting 24 hours.
   if (built) {
-    await page.evaluate(() => sessionStorage.setItem('bcommunity-token-expires-at', String(Date.now() - 1)))
+    await page.evaluate(() => localStorage.setItem('bcommunity-token-expires-at', String(Date.now() - 1)))
     await page.reload()
   } else {
     await page.evaluate(async () => {
@@ -210,7 +211,7 @@ try {
   console.log('PASS: session expiry redirects and hides protected content automatically.')
 
   await login('member@example.com', password, '/messages')
-  const activeToken = await page.evaluate(() => sessionStorage.getItem('bcommunity-token'))
+  const activeToken = await page.evaluate(() => localStorage.getItem('bcommunity-token'))
   assert.equal((await page.request.post(origin + '/api/auth/logout', {
     headers: { Authorization: 'Bearer ' + activeToken },
   })).status(), 200)

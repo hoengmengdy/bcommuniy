@@ -1,7 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { api, apiAction, apiList } from '@/services/api'
+import { timeAgo } from '@/utils/time'
 const notifications = ref([])
+const router = useRouter()
+const openNotification = notification => {
+  if (notification.type === 'message') router.push('/messages')
+}
 onMounted(() => apiAction(async () => { notifications.value = await apiList('/notifications') }))
 const markAllAsRead = () => apiAction(async () => {
   await api('/notifications/read', { method: 'PUT' })
@@ -23,13 +29,14 @@ const markAllAsRead = () => apiAction(async () => {
         :key="notification.id"
         class="notification-item"
         :class="{ 'unread': !notification.isRead }"
+        @click="openNotification(notification)"
       >
         <img :src="notification.user.avatar" alt="Avatar" class="avatar" />
         
         <div class="notification-content">
           <div class="content-header">
             <span class="user-name">{{ notification.user.name }}</span> 
-            <span class="time">{{ notification.time }}</span>
+            <span class="time">{{ timeAgo(notification.time) }}</span>
           </div>
           <p class="notification-text">{{ notification.content }}</p>
         </div>
@@ -48,11 +55,11 @@ const markAllAsRead = () => apiAction(async () => {
   top: calc(100% + 12px);
   right: -6px;
   width: 360px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  /* Solid, not frosted: a blur nested inside the frosted navbar renders see-through on iOS. */
+  background: #ffffff;
   border-radius: 16px;
   border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
   overflow: hidden;
   z-index: 200;
   transform-origin: top right;
@@ -178,5 +185,33 @@ h2 {
   padding: 2.5rem;
   color: #9ca3af;
   font-size: 0.9rem;
+}
+
+/* Phones: span the screen under the navbar instead of hanging off the bell (which overflowed left). */
+@media (max-width: 768px) {
+  .notifications-dropdown {
+    top: calc(100% + 6px);
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    transform-origin: top center;
+  }
+
+  .notifications-list {
+    max-height: min(65vh, 480px);
+  }
+
+  .notification-item {
+    padding: 0.85rem 0.75rem;
+  }
+
+  .avatar {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+
+  .user-name { font-size: 0.95rem; }
+  .notification-text { font-size: 0.9rem; }
 }
 </style>

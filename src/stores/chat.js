@@ -13,7 +13,9 @@ export const useChatStore = defineStore('chat', () => {
   }
   const activeChat = computed(() => conversations.value.find(c => c.id === activeChatId.value))
   const fetchConversations = () => apiAction(async () => {
-    conversations.value = await apiList('/conversations')
+    const rows = await apiList('/conversations')
+    conversations.value = rows.sort((a, b) =>
+      (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0) || b.id - a.id)
     if (!conversations.value.some(c => c.id === activeChatId.value)) {
       activeChatId.value = conversations.value[0]?.id ?? null
     }
@@ -37,13 +39,31 @@ export const useChatStore = defineStore('chat', () => {
     await setActiveChat(chat.id)
     return chat
   })
-  const sendMessage = text => apiAction(async () => {
-    if (!activeChat.value || !text.trim()) return null
-    const response = await api('/conversations/' + activeChatId.value + '/messages',
-      { method: 'POST', body: { text: text.trim() } })
+  // Swap one message in the open conversation for the server's updated copy (reactions, edits).
+  const replaceMessage = updated => {
+    const messages = activeChat.value?.messages
+    const index = messages?.findIndex(m => m.id === updated.id) ?? -1
+    if (index >= 0) messages[index] = updated
+    return updated
+  }
+  const reactToMessage = (messageId, emoji) => apiAction(async () =>
+    replaceMessage((await api('/messages/' + messageId + '/reaction', { method: 'PUT', body: { emoji } })).data))
+  const editMessage = (messageId, text) => apiAction(async () =>
+    replaceMessage((await api('/messages/' + messageId, { method: 'PUT', body: { text: text.trim() } })).data))
+  const deleteMessage = messageId => apiAction(async () => {
+    await api('/messages/' + messageId, { method: 'DELETE' })
+    await fetchConversations()
+    return true
+  })
+  const sendMessage = (text, attachment = null, replyToId = null) => apiAction(async () => {
+    if (!activeChat.value || (!text.trim() && !attachment)) return null
+    const body = { text: text.trim() }
+    if (attachment) body.attachment = attachment
+    if (replyToId) body.replyToId = replyToId
+    const response = await api('/conversations/' + activeChatId.value + '/messages', { method: 'POST', body })
     await fetchConversations()
     return response.data
   })
   return { conversations, members, activeChatId, activeChat, fetchConversations, fetchMembers,
-    setActiveChat, startConversation, sendMessage }
+    setActiveChat, startConversation, sendMessage, reactToMessage, editMessage, deleteMessage }
 })

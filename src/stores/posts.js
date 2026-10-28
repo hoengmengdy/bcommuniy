@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api, apiAction, apiList, expireSession, getSessionVersion, hasToken, setToken, setSessionExpiry } from '../services/api.js'
+import { disablePush } from '../services/push.js'
 
 export const usePostsStore = defineStore('posts', () => {
   const posts = ref([])
@@ -74,6 +75,7 @@ export const usePostsStore = defineStore('posts', () => {
     const pending = hasToken() ? api('/auth/logout', { method: 'POST' }) : Promise.resolve()
     // Remove access immediately, even when the revocation request is slow or fails.
     expireSession()
+    disablePush()
     return apiAction(async () => { await pending; return true })
   }
   const addPost = (content, tag = '#General', codeSnippet = null, codeLanguage = 'javascript',
@@ -93,8 +95,27 @@ export const usePostsStore = defineStore('posts', () => {
   async function fetchPost(id) {
     return replacePost((await api('/posts/' + id)).data)
   }
-  const likePost = postId => apiAction(async () =>
-    replacePost((await api('/posts/' + postId + '/like', { method: 'POST' })).data))
+  const isLiked = post => Boolean(currentUser.value && post?.likedBy?.includes(currentUser.value.id))
+  const pendingLikes = new Set()
+  // Tap once to like, again to unlike.
+  const likePost = postId => apiAction(async () => {
+    const post = posts.value.find(post => post.id === postId)
+    if (!post || !currentUser.value || pendingLikes.has(postId)) return null
+    const version = getSessionVersion()
+    const userId = currentUser.value.id
+    const wasLiked = isLiked(post)
+    pendingLikes.add(postId)
+    replacePost({ ...post, likes: Math.max(0, (post.likes || 0) + (wasLiked ? -1 : 1)),
+      likedBy: wasLiked ? post.likedBy.filter(id => id !== userId) : [...(post.likedBy || []), userId] })
+    try {
+      return replacePost((await api('/posts/' + postId + '/like', { method: wasLiked ? 'DELETE' : 'POST' })).data)
+    } catch (error) {
+      if (version === getSessionVersion()) replacePost(post)
+      throw error
+    } finally {
+      pendingLikes.delete(postId)
+    }
+  })
   const updateProfile = (name, bio, role, skills, avatar) => apiAction(async () => {
     const body = { name, bio, role, skills }
     if (avatar !== undefined) body.avatar = avatar
@@ -106,6 +127,19 @@ export const usePostsStore = defineStore('posts', () => {
     replacePost((await api('/posts/' + postId + '/solve', {
       method: 'POST', body: { commentId },
     })).data))
+  // Authors can delete their own posts and comments; admins can delete anyone's (enforced by the API).
+  const canDelete = author => Boolean(currentUser.value && author
+    && (author.id === currentUser.value.id || currentUser.value.isAdmin))
+  const deletePost = postId => apiAction(async () => {
+    await api('/posts/' + postId, { method: 'DELETE' })
+    posts.value = posts.value.filter(post => post.id !== postId)
+    return true
+  })
+  const deleteComment = (postId, commentId) => apiAction(async () => {
+    await api('/comments/' + commentId, { method: 'DELETE' })
+    await fetchPost(postId)
+    return true
+  })
   return { posts, currentUser, getPostById, initialize, validateSession, fetchPosts, fetchPost, authenticate,
-    logout, addPost, addComment, likePost, updateProfile, markAsSolved }
+    logout, addPost, addComment, likePost, isLiked, updateProfile, markAsSolved, canDelete, deletePost, deleteComment }
 })

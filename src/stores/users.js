@@ -21,5 +21,10 @@ export const useUsersStore = defineStore('users', () => {
     users.value = users.value.filter(user => user.id !== id)
     return true
   })
-  return { users, fetchUsers, addUser, deleteUser }
+  const renameUser = (id, name) => apiAction(async () => {
+    const user = (await api('/users/' + id, { method: 'PUT', body: { name } })).data
+    users.value = users.value.map(existing => (existing.id === id ? user : existing))
+    return user
+  })
+  return { users, fetchUsers, addUser, deleteUser, renameUser }
 })

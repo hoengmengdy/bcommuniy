@@ -26,6 +26,13 @@ const handleCreateUser = async () => {
   }
 }
 
+// Members can't change their own display name; administrators rename them here.
+const renameUser = async user => {
+  const name = window.prompt(`New name for ${user.name}:`, user.name)?.trim()
+  if (!name || name === user.name) return
+  if (await usersStore.renameUser(user.id, name)) uiStore.addToast(`Renamed to ${name}`, 'success')
+}
+
 const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString()
 }
@@ -72,6 +79,12 @@ const formatDate = (dateStr) => {
             </td>
             <td class="text-muted">{{ formatDate(user.joinDate) }}</td>
             <td>
+              <button class="icon-btn rename-btn" @click="renameUser(user)" title="Rename User" aria-label="Rename User">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+              </button>
               <button class="icon-btn delete-btn" @click="usersStore.deleteUser(user.id)" title="Delete User">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 6h18"></path>
@@ -238,6 +251,11 @@ const formatDate = (dateStr) => {
 .icon-btn svg {
   width: 18px;
   height: 18px;
+}
+
+.rename-btn:hover {
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
 }
 
 .delete-btn:hover {

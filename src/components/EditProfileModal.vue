@@ -6,6 +6,8 @@ const props = defineProps({
   initialName: String,
   initialAvatar: String,
   isSaving: Boolean,
+  // Only administrators may change display names (the API enforces this too).
+  canEditName: Boolean,
   initialBio: String,
   initialRole: String,
   initialSkills: {
@@ -108,7 +110,8 @@ function handleSave() {
         </div>
         <div class="form-group">
           <label>Display Name</label>
-          <input type="text" v-model="editName" class="form-input" />
+          <input type="text" v-model="editName" class="form-input" :disabled="!canEditName" />
+          <p v-if="!canEditName" class="field-hint">🔒 Only an admin can change your name.</p>
         </div>
         
         <div class="form-group">
@@ -216,6 +219,18 @@ button:disabled { opacity: 0.6; cursor: wait; }
   font-size: 0.9rem;
   font-weight: 600;
   color: #475569;
+}
+
+.form-input:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
 }
 
 .form-input {

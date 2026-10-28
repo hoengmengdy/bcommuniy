@@ -1,22 +1,50 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePostsStore } from '@/stores/posts'
+import { useUiStore } from '@/stores/ui'
 import CodeBlock from '@/components/CodeBlock.vue'
 import CommentSection from '@/components/CommentSection.vue'
+import { timeAgo } from '@/utils/time'
+import { sharePost } from '@/utils/share'
+import SendPostModal from '@/components/SendPostModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = usePostsStore()
+const uiStore = useUiStore()
 
 const post = computed(() => {
   return store.getPostById(Number(route.params.id))
 })
 
-const formattedTime = computed(() => {
-  if (!post.value) return ''
-  return 'today'
-})
+const formattedTime = computed(() => (post.value ? timeAgo(post.value.timestamp) : ''))
+
+const showSend = ref(false)
+async function share() {
+  try {
+    if (await sharePost(post.value) === 'copied') uiStore.addToast('Link copied', 'success')
+  } catch {
+    uiStore.addToast('Could not share on this device.', 'error')
+  }
+}
+
+// ⋮ menu: the author (or an admin) can delete a post made by mistake.
+const showMenu = ref(false)
+const menuRef = ref(null)
+const closeMenu = event => {
+  if (showMenu.value && menuRef.value && !menuRef.value.contains(event.target)) showMenu.value = false
+}
+onMounted(() => document.addEventListener('click', closeMenu))
+onUnmounted(() => document.removeEventListener('click', closeMenu))
+
+async function deletePost() {
+  showMenu.value = false
+  if (!window.confirm('Delete this post? This cannot be undone.')) return
+  if (!await store.deletePost(post.value.id)) return
+  uiStore.addToast('Post deleted', 'success')
+  router.push('/')
+}
 </script>
 
 <template>
@@ -42,8 +70,10 @@ const formattedTime = computed(() => {
           <!-- Actions below image -->
           <div class="post-actions">
             <div class="action-group-left">
-              <button class="action-btn" @click="store.likePost(post.id)">
-                <svg class="action-icon" style="color: #ef4444;" viewBox="0 0 24 24" fill="currentColor">
+              <button class="action-btn like-btn" aria-label="Like" :class="{ liked: store.isLiked(post) }" :aria-pressed="store.isLiked(post)"
+                @click="store.likePost(post.id)">
+                <svg class="action-icon heart" viewBox="0 0 24 24" :fill="store.isLiked(post) ? 'currentColor' : '#ffffff'"
+                  stroke="currentColor" stroke-width="2">
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                 </svg>
                 <span class="count">{{ post.likes || 0 }} Likes</span>
@@ -54,27 +84,46 @@ const formattedTime = computed(() => {
                 </svg>
                 <span class="count">{{ post.comments?.length || 0 }} Comments</span>
               </button>
+              <button class="action-btn" aria-label="Share" @click="share">
+                <svg class="action-icon" viewBox="0 0 256 256" fill="currentColor">
+                  <path d="M237.66,106.34l-80,80A8,8,0,0,1,144,180.69V136c-51.52,0-91.82,18.06-118,52.88A8,8,0,0,1,14.61,185C27.46,128.84,65.65,88,144,88V43.31a8,8,0,0,1,13.66-5.65l80,80A8,8,0,0,1,237.66,106.34ZM160,157.37V184l56-56-56-56V98.63a8,8,0,0,1-8,8C78.47,106.63,44.75,138,32.22,185.34C58.11,152,95.53,130.63,152,130.63A8,8,0,0,1,160,138.63Z"/>
+                </svg>
+                <span class="count">Share</span>
+              </button>
+              <button class="action-btn" aria-label="Send to a member" @click="showSend = true">
+                <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span class="count">Send</span>
+              </button>
             </div>
           </div>
+          <SendPostModal v-if="showSend" :post="post" @close="showSend = false" />
         </div>
 
         <!-- Right: Author info + Comments -->
         <div class="post-right">
           <div class="post-header">
-            <div class="author-block">
+            <RouterLink :to="`/profile/${post.author.id}`" class="author-block author-link">
               <img :src="post.author.avatar" alt="Avatar" class="avatar" />
               <div class="author-info">
                 <span class="author-name">{{ post.author.name }}</span>
                 <span class="timestamp">{{ formattedTime }}</span>
               </div>
+            </RouterLink>
+            <div v-if="store.canDelete(post.author)" ref="menuRef" class="post-menu-wrap">
+              <button class="more-btn" aria-label="Post options" :aria-expanded="showMenu" @click="showMenu = !showMenu">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="5" cy="12" r="2"></circle>
+                  <circle cx="12" cy="12" r="2"></circle>
+                  <circle cx="19" cy="12" r="2"></circle>
+                </svg>
+              </button>
+              <div v-if="showMenu" class="post-menu" role="menu">
+                <button class="post-menu-item danger" role="menuitem" @click="deletePost">🗑️ Delete post</button>
+              </div>
             </div>
-            <button class="more-btn">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="2"></circle>
-                <circle cx="12" cy="12" r="2"></circle>
-                <circle cx="19" cy="12" r="2"></circle>
-              </svg>
-            </button>
           </div>
 
           <CommentSection :post="post" />
@@ -265,8 +314,67 @@ const formattedTime = computed(() => {
 }
 
 .more-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
+}
+
+.like-btn .heart {
+  color: #64748b;
+}
+
+.like-btn.liked .heart,
+.like-btn.liked .count {
+  color: #ef4444;
+}
+
+.author-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.author-link:hover .author-name {
+  text-decoration: underline;
+}
+
+.post-menu-wrap {
+  position: relative;
+}
+
+.post-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  padding: 0.35rem;
+  z-index: 50;
+}
+
+.post-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 0.8rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.post-menu-item.danger {
+  color: #dc2626;
+}
+
+.post-menu-item.danger:hover {
+  background: #fef2f2;
 }
 
 .post-text {
