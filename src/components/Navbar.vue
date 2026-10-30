@@ -3,8 +3,13 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { usePostsStore } from '@/stores/posts'
 import NotificationsDropdown from './NotificationsDropdown.vue'
+import ThemeToggle from './ThemeToggle.vue'
+import LanguageSwitch from './LanguageSwitch.vue'
+import { useSettingsStore } from '@/stores/settings'
 
 const store = usePostsStore()
+const settings = useSettingsStore()
+const t = settings.t
 const showNotifications = ref(false)
 const route = useRoute()
 const router = useRouter()
@@ -68,7 +73,7 @@ watch(route, () => {
     <div class="navbar-content">
 
       <!-- Brand -->
-      <RouterLink to="/" class="brand" aria-label="Bcommunity home">
+      <RouterLink to="/" class="brand" :aria-label="t('nav.home')">
         <div class="brand-logo">
           <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M228.45,71.16l-96-56a15.82,15.82,0,0,0-16.1,0l-96,55.93A16,16,0,0,0,12.35,85l1.41,100.86a15.94,15.94,0,0,0,7.91,13.78l96,56.09a15.82,15.82,0,0,0,16.1,0l96-56a16,16,0,0,0,7.88-13.82L244,85A15.93,15.93,0,0,0,228.45,71.16ZM128,32.41,203,76.15,128,119.89,53,76.15ZM43.43,94.2l76.57,44.66v84.71l-75.14-43.9ZM136,223.57V138.86l76.57-44.66.42,1.38-1.55,84.1Z"/>
@@ -82,14 +87,20 @@ watch(route, () => {
         <svg class="search-icon" viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"/>
         </svg>
-        <input v-model="searchText" type="search" placeholder="Search posts, people, topics" class="search-input"
-          aria-label="Search posts" />
+        <input v-model="searchText" type="search" :placeholder="t('nav.search')" class="search-input"
+          :aria-label="t('nav.search')" />
       </form>
 
       <!-- Right Actions -->
       <div class="right-actions">
-        <button class="icon-btn mobile-search-btn" :class="{ 'active-icon': showMobileSearch }" aria-label="Search"
-          title="Search" :aria-expanded="showMobileSearch" @click="toggleMobileSearch">
+        <!-- Desktop: theme and language switches sit in the bar; phones get them in the profile menu. -->
+        <div class="nav-settings">
+          <LanguageSwitch />
+          <ThemeToggle />
+        </div>
+
+        <button class="icon-btn mobile-search-btn" :class="{ 'active-icon': showMobileSearch }" :aria-label="t('nav.searchButton')"
+          :title="t('nav.searchButton')" :aria-expanded="showMobileSearch" @click="toggleMobileSearch">
           <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"/>
           </svg>
@@ -97,7 +108,7 @@ watch(route, () => {
 
         <div v-if="store.currentUser" class="notification-wrapper" ref="notificationWrapperRef">
           <button @click="showNotifications = !showNotifications" class="icon-btn" :class="{ 'active-icon': showNotifications }"
-            aria-label="Notifications" title="Notifications" :aria-expanded="showNotifications">
+            :aria-label="t('nav.notifications')" :title="t('nav.notifications')" :aria-expanded="showNotifications">
             <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216Z"/>
             </svg>
@@ -105,18 +116,18 @@ watch(route, () => {
           <NotificationsDropdown v-if="showNotifications" />
         </div>
 
-        <RouterLink to="/messages" class="icon-btn" active-class="active-icon" aria-label="Messages" title="Messages">
+        <RouterLink to="/messages" class="icon-btn" active-class="active-icon" :aria-label="t('nav.messages')" :title="t('nav.messages')">
           <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M132,24A100.11,100.11,0,0,0,32,124v84a16,16,0,0,0,16,16h84a100,100,0,0,0,0-200Zm-28,112a12,12,0,1,1,12-12A12,12,0,0,1,104,136Zm28,0a12,12,0,1,1,12-12A12,12,0,0,1,132,136Zm28,0a12,12,0,1,1,12-12A12,12,0,0,1,160,136Z"/>
           </svg>
         </RouterLink>
 
         <RouterLink v-if="!store.currentUser" to="/auth" class="btn btn-primary sign-in-btn">
-          Sign In
+          {{ t('nav.signIn') }}
         </RouterLink>
 
         <div v-if="store.currentUser" class="profile-wrapper" ref="profileWrapperRef">
-          <button class="user-profile" aria-label="Account menu" :aria-expanded="showProfileMenu"
+          <button class="user-profile" :aria-label="t('nav.account')" :aria-expanded="showProfileMenu"
             @click="showProfileMenu = !showProfileMenu">
             <img :src="store.currentUser.avatar" :alt="store.currentUser.name" class="avatar" />
             <div class="badge" aria-hidden="true">
@@ -133,9 +144,17 @@ watch(route, () => {
                 <span>{{ store.currentUser.email }}</span>
               </div>
             </div>
-            <RouterLink to="/profile" class="profile-menu-item" role="menuitem">👤 My Profile</RouterLink>
-            <RouterLink v-if="store.currentUser.isAdmin" to="/admin" class="profile-menu-item" role="menuitem">🛠️ Admin</RouterLink>
-            <button class="profile-menu-item sign-out" role="menuitem" @click="signOut">🚪 Sign Out</button>
+            <RouterLink to="/profile" class="profile-menu-item" role="menuitem">👤 {{ t('nav.myProfile') }}</RouterLink>
+            <RouterLink v-if="store.currentUser.isAdmin" to="/admin" class="profile-menu-item" role="menuitem">🛠️ {{ t('nav.admin') }}</RouterLink>
+            <div class="menu-settings">
+              <span>{{ t('settings.language') }}</span>
+              <LanguageSwitch />
+            </div>
+            <div class="menu-settings">
+              <span>{{ t('settings.darkMode') }}</span>
+              <ThemeToggle />
+            </div>
+            <button class="profile-menu-item sign-out" role="menuitem" @click="signOut">🚪 {{ t('nav.signOut') }}</button>
           </div>
         </div>
       </div>
@@ -143,9 +162,9 @@ watch(route, () => {
 
     <!-- Phone search row -->
     <form v-if="showMobileSearch" class="mobile-search" role="search" @submit.prevent="submitSearch">
-      <input ref="mobileSearchInput" v-model="searchText" type="search" placeholder="Search posts, people, topics"
-        class="search-input" aria-label="Search posts" />
-      <button type="submit" class="mobile-search-go">Search</button>
+      <input ref="mobileSearchInput" v-model="searchText" type="search" :placeholder="t('nav.search')"
+        class="search-input" :aria-label="t('nav.search')" />
+      <button type="submit" class="mobile-search-go">{{ t('nav.searchButton') }}</button>
     </form>
   </nav>
 </template>
@@ -156,7 +175,7 @@ watch(route, () => {
   top: 0;
   z-index: 100;
   width: 100%;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.82);
   backdrop-filter: saturate(180%) blur(12px);
   -webkit-backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
@@ -201,7 +220,7 @@ watch(route, () => {
 .brand-text {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ink-strong, #0f172a);
   letter-spacing: -0.02em;
 }
 
@@ -212,25 +231,25 @@ watch(route, () => {
   width: 100%;
   max-width: 480px;
   height: 40px;
-  background: #F7F7FA;
-  border: 1px solid #ececf2;
+  background: var(--surface-2, #F7F7FA);
+  border: 1px solid var(--surface-3, #ececf2);
   border-radius: 12px;
   padding: 0 14px;
   transition: all 0.15s ease;
 }
 
-.search-bar:hover { border-color: #e0deeb; }
+.search-bar:hover { border-color: var(--surface-3, #e0deeb); }
 
 .search-bar:focus-within {
-  background: #ffffff;
-  border-color: #c4b5fd;
+  background: var(--surface, #ffffff);
+  border-color: var(--tint-strong, #c4b5fd);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
 .search-icon {
   width: 17px;
   height: 17px;
-  color: #94a3b8;
+  color: var(--ink-400, #94a3b8);
   margin-right: 10px;
   flex-shrink: 0;
 }
@@ -240,11 +259,11 @@ watch(route, () => {
   background: transparent;
   outline: none;
   font-size: 14.5px;
-  color: #0f172a;
+  color: var(--ink-strong, #0f172a);
   width: 100%;
 }
 
-.search-input::placeholder { color: #94a3b8; }
+.search-input::placeholder { color: var(--ink-400, #94a3b8); }
 
 /* Right Actions */
 .right-actions {
@@ -261,7 +280,7 @@ watch(route, () => {
 .icon-btn {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--ink-500, #64748b);
   width: 40px;
   height: 40px;
   display: flex;
@@ -273,7 +292,7 @@ watch(route, () => {
 }
 
 .icon-btn:hover {
-  background: #f4f2fb;
+  background: var(--tint, #f4f2fb);
   color: var(--brand);
 }
 
@@ -288,6 +307,24 @@ watch(route, () => {
 }
 
 .mobile-search-btn { display: none; }
+
+.nav-settings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 6px;
+}
+
+.menu-settings {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-strong, #1f2937);
+}
 
 .sign-in-btn {
   padding: 0.5rem 1.2rem;
@@ -313,14 +350,14 @@ watch(route, () => {
   transition: box-shadow 0.15s ease;
 }
 
-.user-profile:hover { box-shadow: 0 0 0 3px #ede9fe; }
+.user-profile:hover { box-shadow: 0 0 0 3px var(--tint, #ede9fe); }
 
 .profile-menu {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
   width: 240px;
-  background: #ffffff;
+  background: var(--surface, #ffffff);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
@@ -339,7 +376,7 @@ watch(route, () => {
   align-items: center;
   gap: 0.7rem;
   padding: 0.7rem 0.75rem 0.8rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--surface-3, #f1f5f9);
   margin-bottom: 0.3rem;
 }
 
@@ -356,12 +393,12 @@ watch(route, () => {
 
 .profile-menu-who strong {
   font-size: 0.95rem;
-  color: #111827;
+  color: var(--ink-strong, #111827);
 }
 
 .profile-menu-who span {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--ink-500, #6b7280);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -378,7 +415,7 @@ watch(route, () => {
   background: none;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink-strong, #1f2937);
   text-decoration: none;
   text-align: left;
   cursor: pointer;
@@ -389,12 +426,12 @@ watch(route, () => {
 
 .profile-menu-item:hover,
 .profile-menu-item.router-link-active {
-  background: #f5f3ff;
-  color: #6d28d9;
+  background: var(--tint, #f5f3ff);
+  color: var(--brand-ink, #6d28d9);
 }
 
-.profile-menu-item.sign-out { color: #dc2626; }
-.profile-menu-item.sign-out:hover { background: #fef2f2; }
+.profile-menu-item.sign-out { color: var(--red-ink, #dc2626); }
+.profile-menu-item.sign-out:hover { background: var(--tint-red, #fef2f2); }
 
 .avatar {
   width: 36px;
@@ -402,7 +439,7 @@ watch(route, () => {
   border-radius: 50%;
   object-fit: cover;
   display: block;
-  background: #ede9fe;
+  background: var(--tint, #ede9fe);
 }
 
 .badge {
@@ -410,7 +447,7 @@ watch(route, () => {
   bottom: -2px;
   right: -2px;
   background: var(--brand);
-  border: 2px solid #ffffff;
+  border: 2px solid var(--surface, #ffffff);
   border-radius: 50%;
   width: 14px;
   height: 14px;
@@ -447,6 +484,8 @@ watch(route, () => {
 
   .search-bar { display: none; }
   .mobile-search-btn { display: flex; }
+  .nav-settings { display: none; }
+  .menu-settings { display: flex; }
 
   .right-actions { gap: 2px; }
 
@@ -476,14 +515,14 @@ watch(route, () => {
   .mobile-search .search-input {
     flex: 1;
     height: 40px;
-    background: #F7F7FA;
-    border: 1px solid #ececf2;
+    background: var(--surface-2, #F7F7FA);
+    border: 1px solid var(--surface-3, #ececf2);
     border-radius: 12px;
     padding: 0 14px;
     font-size: 16px; /* 16px stops iOS from zooming in on focus. */
   }
 
-  .mobile-search .search-input:focus { background: #fff; border-color: #c4b5fd; }
+  .mobile-search .search-input:focus { background: var(--surface, #fff); border-color: var(--tint-strong, #c4b5fd); }
 
   .mobile-search-go {
     height: 40px;

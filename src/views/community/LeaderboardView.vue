@@ -113,7 +113,7 @@ onMounted(() => apiAction(async () => { leaders.value = await apiList('/leaderbo
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: white;
+  background: var(--surface, white);
   border: 4px solid var(--surface-bg);
   margin-bottom: 1rem;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -139,8 +139,8 @@ onMounted(() => apiAction(async () => { leaders.value = await apiList('/leaderbo
 
 .first-place {
   height: 220px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(253, 230, 138, 0.3) 100%);
-  border-color: #fde68a;
+  background: linear-gradient(180deg, rgb(var(--surface-rgb, 255 255 255) / 0.9) 0%, rgba(253, 230, 138, 0.3) 100%);
+  border-color: var(--tint-amber, #fde68a);
   transform: translateY(-20px);
 }
 .first-place .rank-badge { background: #fbbf24; }
@@ -149,19 +149,19 @@ onMounted(() => apiAction(async () => { leaders.value = await apiList('/leaderbo
 
 .second-place {
   height: 180px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(226, 232, 240, 0.4) 100%);
-  border-color: #e2e8f0;
+  background: linear-gradient(180deg, rgb(var(--surface-rgb, 255 255 255) / 0.9) 0%, rgba(226, 232, 240, 0.4) 100%);
+  border-color: var(--line, #e2e8f0);
 }
-.second-place .rank-badge { background: #94a3b8; }
-.second-place .podium-avatar { border-color: #cbd5e1; }
+.second-place .rank-badge { background: var(--ink-400, #94a3b8); }
+.second-place .podium-avatar { border-color: var(--ink-300, #cbd5e1); }
 
 .third-place {
   height: 160px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(254, 215, 170, 0.3) 100%);
-  border-color: #fed7aa;
+  background: linear-gradient(180deg, rgb(var(--surface-rgb, 255 255 255) / 0.9) 0%, rgba(254, 215, 170, 0.3) 100%);
+  border-color: var(--tint-amber, #fed7aa);
 }
 .third-place .rank-badge { background: #d97706; }
-.third-place .podium-avatar { border-color: #fbd38d; }
+.third-place .podium-avatar { border-color: var(--tint-amber, #fbd38d); }
 
 .crown {
   position: absolute;
@@ -222,7 +222,7 @@ onMounted(() => apiAction(async () => { leaders.value = await apiList('/leaderbo
 }
 
 .list-row:hover {
-  background: rgba(255,255,255,0.5);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.5);
 }
 
 .list-row:last-child {
@@ -256,7 +256,7 @@ onMounted(() => apiAction(async () => { leaders.value = await apiList('/leaderbo
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
 }
 
 .font-bold { font-weight: 700; }

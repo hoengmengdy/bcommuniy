@@ -37,8 +37,8 @@ const uiStore = useUiStore()
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: var(--surface, #ffffff);
+  color: var(--ink-strong, #1a1a1a);
   padding: 0.75rem 1.25rem;
   border-radius: 12px;
   box-shadow: none;

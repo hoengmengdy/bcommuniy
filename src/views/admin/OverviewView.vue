@@ -152,7 +152,7 @@ const recentActivity = computed(() => {
 
 .users-icon {
   background: rgba(99, 102, 241, 0.15);
-  color: #4f46e5;
+  color: var(--indigo-ink, #4f46e5);
 }
 
 .posts-icon {
@@ -204,14 +204,14 @@ const recentActivity = computed(() => {
   align-items: center;
   gap: 1.2rem;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.4);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgb(var(--surface-rgb, 255 255 255) / 0.6);
   transition: all var(--transition-fast);
 }
 
 .activity-item:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.7);
   transform: translateX(4px);
 }
 
@@ -219,7 +219,7 @@ const recentActivity = computed(() => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
 }
 
 .activity-content {
@@ -243,7 +243,7 @@ const recentActivity = computed(() => {
   display: inline-block;
   padding: 0.1rem 0.5rem;
   background: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
+  color: var(--indigo-ink, #4f46e5);
   border-radius: 4px;
   font-size: 0.8rem;
   font-weight: 600;

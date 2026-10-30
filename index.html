@@ -13,6 +13,14 @@
     <meta name="apple-mobile-web-app-title" content="Bcommunity">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Bcommunity</title>
+    <script>
+      // Apply the saved theme and language before the first paint (no white flash in dark mode).
+      try {
+        var theme = localStorage.getItem('bcommunity-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.dataset.theme = theme
+        document.documentElement.lang = localStorage.getItem('bcommunity-lang') || 'km'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

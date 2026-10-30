@@ -227,10 +227,10 @@ function formatComment(text) {
 .section-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--surface-3, #f1f5f9);
 }
 
 .comments-list {
@@ -273,7 +273,7 @@ function formatComment(text) {
 }
 
 .comment-bubble {
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
   border-radius: 14px;
   padding: 0.5rem 0.9rem;
   display: inline-block;
@@ -283,7 +283,7 @@ function formatComment(text) {
 .comment-author {
   font-weight: 700;
   font-size: 0.82rem;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -302,7 +302,7 @@ function formatComment(text) {
 
 .comment-text {
   font-size: 0.88rem;
-  color: #374151;
+  color: var(--ink-700, #374151);
   margin: 0;
   line-height: 1.4;
 }
@@ -316,13 +316,13 @@ function formatComment(text) {
 
 .comment-time {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
 }
 
 .reply-btn {
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--ink-500, #6b7280);
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
@@ -331,7 +331,7 @@ function formatComment(text) {
 }
 
 .reply-btn:hover {
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
 }
 
 .author-link {
@@ -348,7 +348,7 @@ function formatComment(text) {
 }
 
 .delete-btn:hover {
-  color: #b91c1c;
+  color: var(--red-ink, #b91c1c);
 }
 
 .mark-solved-btn {
@@ -399,13 +399,13 @@ function formatComment(text) {
 .no-comments {
   text-align: center;
   padding: 2rem;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   font-size: 0.9rem;
 }
 
 /* Input area */
 .input-area {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--surface-3, #f1f5f9);
   padding-top: 0.75rem;
 }
 
@@ -413,13 +413,13 @@ function formatComment(text) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f5f3ff;
-  border: 1px solid #ede9fe;
+  background: var(--tint, #f5f3ff);
+  border: 1px solid var(--tint, #ede9fe);
   border-radius: 8px;
   padding: 0.35rem 0.75rem;
   margin-bottom: 0.5rem;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--ink-500, #6b7280);
 }
 
 .replying-banner strong {
@@ -429,14 +429,14 @@ function formatComment(text) {
 .cancel-reply {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0;
 }
 
 .cancel-reply:hover {
-  color: #374151;
+  color: var(--ink-700, #374151);
 }
 
 .add-comment {
@@ -452,24 +452,24 @@ function formatComment(text) {
 
 .comment-input {
   width: 100%;
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
   border: 1.5px solid transparent;
   border-radius: 24px;
   padding: 0.6rem 1rem;
   font-family: inherit;
   font-size: 0.88rem;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
   transition: all 0.2s ease;
   outline: none;
 }
 
 .comment-input:focus {
-  background: #ffffff;
+  background: var(--surface, #ffffff);
   border-color: #7c3aed;
 }
 
 .comment-input::placeholder {
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
 }
 
 .enter-hint {
@@ -478,13 +478,13 @@ function formatComment(text) {
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.7rem;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   pointer-events: none;
 }
 
 .send-btn {
-  background: #e2e8f0;
-  color: #94a3b8;
+  background: var(--line, #e2e8f0);
+  color: var(--ink-400, #94a3b8);
   border: none;
   border-radius: 50%;
   width: 34px;
@@ -513,7 +513,7 @@ function formatComment(text) {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   cursor: pointer;
   padding: 0.4rem;
   border-radius: 50%;
@@ -530,10 +530,10 @@ function formatComment(text) {
 
 .code-input-section {
   margin-bottom: 0.75rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line, #e2e8f0);
   border-radius: 12px;
   overflow: hidden;
-  background: #f8fafc;
+  background: var(--surface-2, #f8fafc);
 }
 
 .code-header {
@@ -541,17 +541,17 @@ function formatComment(text) {
   justify-content: space-between;
   align-items: center;
   padding: 0.4rem 0.75rem;
-  background: #f1f5f9;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--surface-3, #f1f5f9);
+  border-bottom: 1px solid var(--line, #e2e8f0);
 }
 
 .tag-selector {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--surface, white);
+  border: 1px solid var(--line, #e2e8f0);
   border-radius: 6px;
   padding: 0.2rem 0.5rem;
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--ink-600, #475569);
   outline: none;
 }
 
@@ -562,7 +562,7 @@ function formatComment(text) {
   padding: 0.75rem;
   font-family: 'Fira Code', 'Consolas', monospace;
   font-size: 0.85rem;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
   resize: vertical;
   min-height: 80px;
 }

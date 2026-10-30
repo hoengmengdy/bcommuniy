@@ -56,7 +56,7 @@ const markAllAsRead = () => apiAction(async () => {
   right: -6px;
   width: 360px;
   /* Solid, not frosted: a blur nested inside the frosted navbar renders see-through on iOS. */
-  background: #ffffff;
+  background: var(--surface, #ffffff);
   border-radius: 16px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
@@ -82,7 +82,7 @@ const markAllAsRead = () => apiAction(async () => {
 h2 {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
   margin: 0;
 }
 
@@ -159,7 +159,7 @@ h2 {
 }
 
 .notification-text {
-  color: #4b5563;
+  color: var(--ink-600, #4b5563);
   margin: 0;
   font-size: 0.85rem;
   white-space: nowrap;
@@ -169,13 +169,13 @@ h2 {
 
 .user-name {
   font-weight: 600;
-  color: #111827;
+  color: var(--ink-strong, #111827);
   font-size: 0.9rem;
 }
 
 .time {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   flex-shrink: 0;
   margin-left: 0.5rem;
 }
@@ -183,7 +183,7 @@ h2 {
 .empty-state {
   text-align: center;
   padding: 2.5rem;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   font-size: 0.9rem;
 }
 

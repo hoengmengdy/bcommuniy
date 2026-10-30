@@ -94,7 +94,7 @@ const handleSubmit = () => {
 }
 
 .modal-content {
-  background: white;
+  background: var(--surface, white);
   width: 90%;
   max-width: 500px;
   border-radius: 24px;
@@ -119,14 +119,14 @@ const handleSubmit = () => {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink-strong, #111827);
 }
 
 .close-btn {
   background: none;
   border: none;
   font-size: 1.25rem;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 50%;
@@ -134,8 +134,8 @@ const handleSubmit = () => {
 }
 
 .close-btn:hover {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-3, #f3f4f6);
+  color: var(--ink-600, #4b5563);
 }
 
 .task-form {
@@ -153,14 +153,14 @@ const handleSubmit = () => {
 .form-group label {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #374151;
+  color: var(--ink-700, #374151);
 }
 
 .form-group input,
 .form-group textarea,
 .form-group select {
   padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--ink-300, #d1d5db);
   border-radius: 12px;
   font-size: 1rem;
   font-family: inherit;
@@ -183,9 +183,9 @@ const handleSubmit = () => {
 }
 
 .btn-cancel {
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #4b5563;
+  background: var(--surface, white);
+  border: 1px solid var(--ink-300, #d1d5db);
+  color: var(--ink-600, #4b5563);
   padding: 0.75rem 1.5rem;
   border-radius: 100px;
   font-weight: 600;
@@ -194,7 +194,7 @@ const handleSubmit = () => {
 }
 
 .btn-cancel:hover {
-  background: #f9fafb;
+  background: var(--surface-2, #f9fafb);
 }
 
 .btn-submit {

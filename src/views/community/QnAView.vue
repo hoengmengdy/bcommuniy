@@ -140,7 +140,7 @@ const filteredQuestions = computed(() => {
 
 .page-title {
   font-size: 2rem;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
 }
 
 .header-section {
@@ -176,12 +176,12 @@ const filteredQuestions = computed(() => {
 }
 
 .tab:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.5);
   color: var(--text-primary);
 }
 
 .tab.active {
-  background: white;
+  background: var(--surface, white);
   color: var(--accent-color);
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
@@ -303,11 +303,11 @@ const filteredQuestions = computed(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
 }
 
 .author-name {
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
   font-weight: 500;
 }
 

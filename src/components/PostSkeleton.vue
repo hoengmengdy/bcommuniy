@@ -30,8 +30,8 @@
 
 <style scoped>
 .post-skeleton {
-  background: #ffffff;
-  border: 1px solid var(--surface-border, #e2e8f0);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--surface-border, var(--line, #e2e8f0));
   border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 2rem;
@@ -48,7 +48,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background-color: #e2e8f0;
+  background-color: var(--line, #e2e8f0);
   animation: pulse 1.5s infinite ease-in-out;
 }
 
@@ -70,7 +70,7 @@
 
 .skeleton-text {
   height: 12px;
-  background-color: #e2e8f0;
+  background-color: var(--line, #e2e8f0);
   border-radius: 4px;
   animation: pulse 1.5s infinite ease-in-out;
 }
@@ -86,7 +86,7 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 12px;
-  background-color: #e2e8f0;
+  background-color: var(--line, #e2e8f0);
   margin-bottom: 1.5rem;
   animation: pulse 1.5s infinite ease-in-out;
 }
@@ -100,7 +100,7 @@
   width: 40px;
   height: 20px;
   border-radius: 8px;
-  background-color: #e2e8f0;
+  background-color: var(--line, #e2e8f0);
   animation: pulse 1.5s infinite ease-in-out;
 }
 </style>

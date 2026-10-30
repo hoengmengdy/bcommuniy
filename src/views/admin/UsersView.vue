@@ -181,7 +181,7 @@ const formatDate = (dateStr) => {
 
 .users-table td {
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.4);
   backdrop-filter: blur(4px);
 }
 
@@ -196,7 +196,7 @@ const formatDate = (dateStr) => {
 }
 
 .users-table tr:hover td {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.7);
 }
 
 .user-info {
@@ -209,7 +209,7 @@ const formatDate = (dateStr) => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
 }
 
 .user-name {
@@ -225,7 +225,7 @@ const formatDate = (dateStr) => {
 
 .role-badge.admin {
   background: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
+  color: var(--indigo-ink, #4f46e5);
   border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
@@ -239,7 +239,7 @@ const formatDate = (dateStr) => {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   padding: 0.5rem;
   border-radius: 8px;
   transition: all var(--transition-fast);
@@ -279,7 +279,7 @@ const formatDate = (dateStr) => {
   width: 100%;
   max-width: 500px;
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.85);
 }
 
 .modal-header {
@@ -299,11 +299,11 @@ const formatDate = (dateStr) => {
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--ink-500, #6b7280);
 }
 
 .close-btn:hover {
-  color: #111827;
+  color: var(--ink-strong, #111827);
 }
 
 .create-form {

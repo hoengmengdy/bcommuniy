@@ -6,10 +6,14 @@ import PostSkeleton from '@/components/PostSkeleton.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/services/api'
+import { useSettingsStore } from '@/stores/settings'
 
 const store = usePostsStore()
 const route = useRoute()
 const router = useRouter()
+const t = useSettingsStore().t
+const tagLabel = tag => (tag === 'All Topics' ? t('home.allTopics') : tag)
+const roleLabel = role => t('role.' + role)
 // Top Mentors shows the real highest-reputation members with their own profile photos.
 const mentors = ref([])
 const isLoading = ref(true)
@@ -51,9 +55,9 @@ const filteredPosts = computed(() => {
     <div class="layout-grid">
 
       <!-- Left Sidebar (Filters) -->
-      <aside class="left-sidebar" aria-label="Topics">
+      <aside class="left-sidebar" :aria-label="t('home.topics')">
         <nav class="sidebar-card glass-panel">
-          <h2 class="card-title">Topics</h2>
+          <h2 class="card-title">{{ t('home.topics') }}</h2>
           <ul class="topic-list">
             <li v-for="tag in tags" :key="tag">
               <button
@@ -61,7 +65,7 @@ const filteredPosts = computed(() => {
                 :aria-pressed="activeTag === tag"
                 @click="activeTag = tag"
               >
-                {{ tag }}
+                {{ tagLabel(tag) }}
               </button>
             </li>
           </ul>
@@ -69,10 +73,10 @@ const filteredPosts = computed(() => {
 
         <footer class="sidebar-links">
           <div class="sidebar-links-row">
-            <a href="#">About</a>
-            <a href="#">Help Center</a>
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
+            <a href="#">{{ t('home.about') }}</a>
+            <a href="#">{{ t('home.help') }}</a>
+            <a href="#">{{ t('home.privacy') }}</a>
+            <a href="#">{{ t('home.terms') }}</a>
           </div>
           <p>© 2026 Bcommunity</p>
         </footer>
@@ -81,7 +85,7 @@ const filteredPosts = computed(() => {
       <!-- Main Feed -->
       <div class="feed-column">
         <!-- Topics as chips on tablets/phones without the left sidebar -->
-        <div class="mobile-topics" role="group" aria-label="Topics">
+        <div class="mobile-topics" role="group" :aria-label="t('home.topics')">
           <button
             v-for="tag in tags"
             :key="'mob-'+tag"
@@ -89,16 +93,16 @@ const filteredPosts = computed(() => {
             :aria-pressed="activeTag === tag"
             @click="activeTag = tag"
           >
-            {{ tag }}
+            {{ tagLabel(tag) }}
           </button>
         </div>
 
         <CreatePost v-if="store.currentUser" />
-        <RouterLink v-else to="/auth" class="btn btn-primary">Sign in to post</RouterLink>
+        <RouterLink v-else to="/auth" class="btn btn-primary">{{ t('home.signInToPost') }}</RouterLink>
 
         <div v-if="searchQuery" class="search-summary">
-          <span>{{ filteredPosts.length }} result{{ filteredPosts.length === 1 ? '' : 's' }} for “<strong>{{ searchQuery }}</strong>”</span>
-          <button class="clear-search" @click="clearSearch">Clear</button>
+          <span>{{ t(filteredPosts.length === 1 ? 'home.resultsOne' : 'home.resultsMany', { count: filteredPosts.length }) }} “<strong>{{ searchQuery }}</strong>”</span>
+          <button class="clear-search" @click="clearSearch">{{ t('home.clear') }}</button>
         </div>
 
         <div class="feed">
@@ -112,39 +116,39 @@ const filteredPosts = computed(() => {
               :post="post"
             />
             <p v-if="!filteredPosts.length" class="feed-empty glass-panel">
-              {{ searchQuery ? 'No posts match your search.' : 'No posts in this topic yet.' }}
+              {{ searchQuery ? t('home.noMatch') : t('home.noPosts') }}
             </p>
           </template>
         </div>
       </div>
 
       <!-- Right Sidebar -->
-      <aside class="right-sidebar" aria-label="Community highlights">
+      <aside class="right-sidebar" :aria-label="t('home.highlights')">
         <section class="sidebar-card glass-panel">
-          <h2 class="card-title">Top Mentors</h2>
+          <h2 class="card-title">{{ t('home.topMentors') }}</h2>
           <ul class="row-list">
             <li v-for="m in mentors" :key="m.id" class="widget-row">
-              <button class="row-main" :aria-label="`Open ${m.name}'s profile`" @click="router.push(`/profile/${m.id}`)">
+              <button class="row-main" :aria-label="t('home.openProfile', { name: m.name })" @click="router.push(`/profile/${m.id}`)">
                 <img :src="m.avatar" :alt="m.name" class="widget-avatar" />
                 <span class="widget-info">
                   <span class="widget-name-line">
                     <span class="widget-name">{{ m.name }}</span>
-                    <span v-if="m.profileRole" class="level-badge" :class="'level-' + m.profileRole.toLowerCase()">{{ m.profileRole }}</span>
+                    <span v-if="m.profileRole" class="level-badge" :class="'level-' + m.profileRole.toLowerCase()">{{ roleLabel(m.profileRole) }}</span>
                   </span>
-                  <span class="widget-sub">Reputation: {{ m.reputation }}</span>
+                  <span class="widget-sub">{{ t('home.reputation', { n: m.reputation }) }}</span>
                 </span>
               </button>
-              <button class="row-action" title="Ask for mentorship" aria-label="Ask for mentorship" @click="router.push('/mentorship')">
+              <button class="row-action" :title="t('home.askMentor')" :aria-label="t('home.askMentor')" @click="router.push('/mentorship')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
               </button>
             </li>
-            <li v-if="!mentors.length" class="widget-sub">No mentors yet.</li>
+            <li v-if="!mentors.length" class="widget-sub">{{ t('home.noMentors') }}</li>
           </ul>
-          <button class="link-btn" @click="router.push('/leaderboard')">View Leaderboard</button>
+          <button class="link-btn" @click="router.push('/leaderboard')">{{ t('home.viewLeaderboard') }}</button>
         </section>
 
         <section class="sidebar-card glass-panel">
-          <h2 class="card-title">Useful Resources</h2>
+          <h2 class="card-title">{{ t('home.resources') }}</h2>
           <ul class="row-list">
             <li>
               <a class="row-main resource-link" href="https://vuejs.org/guide/introduction.html" target="_blank" rel="noopener">
@@ -153,7 +157,7 @@ const filteredPosts = computed(() => {
                 </span>
                 <span class="widget-info">
                   <span class="widget-name">Vue.js Docs</span>
-                  <span class="widget-sub">Official Documentation</span>
+                  <span class="widget-sub">{{ t('home.vueDocs') }}</span>
                 </span>
               </a>
             </li>
@@ -169,11 +173,11 @@ const filteredPosts = computed(() => {
               </a>
             </li>
           </ul>
-          <button class="link-btn" @click="router.push('/knowledge')">View all resources</button>
+          <button class="link-btn" @click="router.push('/knowledge')">{{ t('home.viewResources') }}</button>
         </section>
 
         <section class="sidebar-card glass-panel">
-          <h2 class="card-title card-title-flat">Advertising <span class="card-title-note">(optional)</span></h2>
+          <h2 class="card-title card-title-flat">{{ t('home.ads') }} <span class="card-title-note">{{ t('home.optional') }}</span></h2>
         </section>
       </aside>
 
@@ -214,13 +218,13 @@ const filteredPosts = computed(() => {
 .card-title {
   font-size: 15.5px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink-strong, #0f172a);
   letter-spacing: -0.01em;
   margin: 0 0 10px;
 }
 
 .card-title-flat { margin: 0; }
-.card-title-note { font-weight: 400; color: #94a3b8; font-size: 12.5px; }
+.card-title-note { font-weight: 400; color: var(--ink-400, #94a3b8); font-size: 12.5px; }
 
 /* Topics */
 .topic-list {
@@ -237,7 +241,7 @@ const filteredPosts = computed(() => {
   border: none;
   border-radius: 8px;
   background: none;
-  color: #475569;
+  color: var(--ink-600, #475569);
   font-weight: 500;
   font-size: 14.5px;
   text-align: left;
@@ -246,20 +250,20 @@ const filteredPosts = computed(() => {
 }
 
 .topic-item:hover {
-  background: #f6f5fb;
-  color: #0f172a;
+  background: var(--tint, #f6f5fb);
+  color: var(--ink-strong, #0f172a);
 }
 
 .topic-item.active {
   background: var(--brand-soft);
-  color: #6d28d9;
+  color: var(--brand-ink, #6d28d9);
   font-weight: 600;
 }
 
 .sidebar-links {
   padding: 0 6px;
   font-size: 12.5px;
-  color: #94a3b8;
+  color: var(--ink-400, #94a3b8);
 }
 
 .sidebar-links-row {
@@ -270,7 +274,7 @@ const filteredPosts = computed(() => {
 }
 
 .sidebar-links a {
-  color: #64748b;
+  color: var(--ink-500, #64748b);
   text-decoration: none;
   border-radius: 4px;
 }
@@ -294,7 +298,7 @@ const filteredPosts = computed(() => {
 .feed-empty {
   padding: 28px;
   text-align: center;
-  color: #64748b;
+  color: var(--ink-500, #64748b);
 }
 
 .search-summary {
@@ -304,13 +308,13 @@ const filteredPosts = computed(() => {
   gap: 12px;
   margin: 0 2px 12px;
   font-size: 14px;
-  color: #475569;
+  color: var(--ink-600, #475569);
 }
 
 .clear-search {
   border: none;
   background: var(--brand-soft);
-  color: #6d28d9;
+  color: var(--brand-ink, #6d28d9);
   font-weight: 600;
   font-size: 13px;
   padding: 5px 12px;
@@ -319,7 +323,7 @@ const filteredPosts = computed(() => {
   transition: all 0.15s ease;
 }
 
-.clear-search:hover { background: #ede9fe; }
+.clear-search:hover { background: var(--tint, #ede9fe); }
 
 /* Topic chips for tablets and phones */
 .mobile-topics {
@@ -338,17 +342,17 @@ const filteredPosts = computed(() => {
   flex-shrink: 0;
   padding: 7px 14px;
   border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid #ebe9f5;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--surface-3, #ebe9f5);
   font-size: 13.5px;
   font-weight: 500;
-  color: #475569;
+  color: var(--ink-600, #475569);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
 }
 
-.mobile-topic:hover { border-color: #ddd6fe; color: #0f172a; }
+.mobile-topic:hover { border-color: var(--tint-strong, #ddd6fe); color: var(--ink-strong, #0f172a); }
 
 .mobile-topic.active {
   background: var(--brand);
@@ -388,7 +392,7 @@ const filteredPosts = computed(() => {
   transition: background 0.15s ease;
 }
 
-.row-main:hover { background: #f6f5fb; }
+.row-main:hover { background: var(--tint, #f6f5fb); }
 .row-main:hover .widget-name { color: var(--brand); }
 
 .widget-avatar, .widget-icon {
@@ -398,7 +402,7 @@ const filteredPosts = computed(() => {
   flex-shrink: 0;
 }
 
-.widget-avatar { object-fit: cover; background: #ede9fe; }
+.widget-avatar { object-fit: cover; background: var(--tint, #ede9fe); }
 
 .widget-icon {
   display: flex;
@@ -424,7 +428,7 @@ const filteredPosts = computed(() => {
 .widget-name {
   font-weight: 600;
   font-size: 14px;
-  color: #0f172a;
+  color: var(--ink-strong, #0f172a);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -433,7 +437,7 @@ const filteredPosts = computed(() => {
 
 .widget-sub {
   font-size: 12.5px;
-  color: #64748b;
+  color: var(--ink-500, #64748b);
 }
 
 .row-list > .widget-sub { padding: 4px 8px; }
@@ -445,13 +449,13 @@ const filteredPosts = computed(() => {
   font-size: 11px;
   font-weight: 600;
   line-height: 1.6;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--surface-3, #f1f5f9);
+  color: var(--ink-600, #475569);
 }
 
-.level-senior { background: #ecfdf3; color: #047857; }
-.level-beginner { background: #eef2ff; color: #4f46e5; }
-.level-teacher { background: #fef6e7; color: #b45309; }
+.level-senior { background: var(--tint-green, #ecfdf3); color: var(--green-ink, #047857); }
+.level-beginner { background: var(--tint, #eef2ff); color: var(--indigo-ink, #4f46e5); }
+.level-teacher { background: var(--tint-amber, #fef6e7); color: var(--amber-ink, #b45309); }
 
 .row-action {
   flex-shrink: 0;
@@ -480,7 +484,7 @@ const filteredPosts = computed(() => {
   margin: 0 auto;
   background: none;
   border: none;
-  color: #6d28d9;
+  color: var(--brand-ink, #6d28d9);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

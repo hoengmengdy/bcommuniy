@@ -184,15 +184,15 @@ async function deletePost() {
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #e2e8f0);
   border-radius: 16px;
   overflow: hidden;
 }
 
 .post-image-container {
   width: 100%;
-  background: #f0f0f0;
+  background: var(--surface-3, #f0f0f0);
 }
 
 .post-image {
@@ -209,7 +209,7 @@ async function deletePost() {
 
 .post-content-area {
   padding: 1.5rem 1.5rem 1rem 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--surface-3, #f1f5f9);
 }
 
 .post-actions {
@@ -217,7 +217,7 @@ async function deletePost() {
   justify-content: flex-start;
   align-items: center;
   padding: 1rem 1.5rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--surface-3, #f3f4f6);
 }
 
 .action-group-left {
@@ -231,7 +231,7 @@ async function deletePost() {
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--ink-500, #6b7280);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -239,8 +239,8 @@ async function deletePost() {
 }
 
 .action-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--surface-3, #f1f5f9);
+  color: var(--ink-strong, #0f172a);
 }
 
 .action-icon {
@@ -255,8 +255,8 @@ async function deletePost() {
 
 /* Right column */
 .post-right {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #e2e8f0);
   border-radius: 16px;
   padding: 1.5rem;
   display: flex;
@@ -273,7 +273,7 @@ async function deletePost() {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--surface-3, #f3f4f6);
 }
 
 .author-block {
@@ -297,19 +297,19 @@ async function deletePost() {
 .author-name {
   font-weight: 700;
   font-size: 1rem;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
 }
 
 .timestamp {
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   margin-top: 2px;
 }
 
 .more-btn {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--ink-400, #9ca3af);
   cursor: pointer;
   padding: 0.5rem;
 }
@@ -320,7 +320,7 @@ async function deletePost() {
 }
 
 .like-btn .heart {
-  color: #64748b;
+  color: var(--ink-500, #64748b);
 }
 
 .like-btn.liked .heart,
@@ -346,7 +346,7 @@ async function deletePost() {
   top: calc(100% + 4px);
   right: 0;
   min-width: 180px;
-  background: #ffffff;
+  background: var(--surface, #ffffff);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
@@ -371,11 +371,11 @@ async function deletePost() {
 }
 
 .post-menu-item.danger {
-  color: #dc2626;
+  color: var(--red-ink, #dc2626);
 }
 
 .post-menu-item.danger:hover {
-  background: #fef2f2;
+  background: var(--tint-red, #fef2f2);
 }
 
 .post-text {
@@ -387,9 +387,9 @@ async function deletePost() {
 .not-found {
   text-align: center;
   padding: 4rem 2rem;
-  background: #ffffff;
+  background: var(--surface, #ffffff);
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line, #e2e8f0);
 }
 
 @media (max-width: 768px) {

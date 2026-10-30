@@ -82,17 +82,17 @@ onUnmounted(() => {
 
 <style scoped>
 .notification-settings { padding: 1.25rem; margin-bottom: 1.5rem; }
-h2 { margin: 0 0 0.75rem; font-size: 1.1rem; color: #0f172a; }
-p { color: #475569; font-size: 0.88rem; line-height: 1.7; margin: 0.75rem 0; }
-.notification-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; padding: 0.85rem; border: 1px solid #ddd6fe; border-radius: 12px; background: #f5f3ff; color: #5b21b6; font: inherit; cursor: pointer; text-align: left; }
+h2 { margin: 0 0 0.75rem; font-size: 1.1rem; color: var(--ink-strong, #0f172a); }
+p { color: var(--ink-600, #475569); font-size: 0.88rem; line-height: 1.7; margin: 0.75rem 0; }
+.notification-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; padding: 0.85rem; border: 1px solid var(--tint-strong, #ddd6fe); border-radius: 12px; background: var(--tint, #f5f3ff); color: var(--brand-ink, #5b21b6); font: inherit; cursor: pointer; text-align: left; }
 .notification-toggle:focus-visible { outline: 3px solid #7c3aed; outline-offset: 3px; }
 .notification-toggle:disabled { opacity: 0.6; cursor: wait; }
-.switch-track { display: flex; align-items: center; flex-shrink: 0; width: 44px; height: 26px; padding: 3px; box-sizing: border-box; border-radius: 20px; background: #94a3b8; }
-.switch-track span { width: 20px; height: 20px; background: white; border-radius: 50%; transition: transform 0.15s; }
+.switch-track { display: flex; align-items: center; flex-shrink: 0; width: 44px; height: 26px; padding: 3px; box-sizing: border-box; border-radius: 20px; background: var(--ink-400, #94a3b8); }
+.switch-track span { width: 20px; height: 20px; background: var(--surface, white); border-radius: 50%; transition: transform 0.15s; }
 .switch-track.enabled { background: #16a34a; }
 .switch-track.enabled span { transform: translateX(18px); }
-.notification-help { border-radius: 10px; padding: 0.8rem; background: #f1f5f9; color: #334155; font-size: 0.85rem; line-height: 1.8; }
+.notification-help { border-radius: 10px; padding: 0.8rem; background: var(--surface-3, #f1f5f9); color: var(--ink-700, #334155); font-size: 0.85rem; line-height: 1.8; }
 .notification-status { color: #15803d; }
-.notification-error { color: #b91c1c; overflow-wrap: anywhere; }
-.notification-note { font-size: 0.8rem; color: #64748b; margin-bottom: 0; }
+.notification-error { color: var(--red-ink, #b91c1c); overflow-wrap: anywhere; }
+.notification-note { font-size: 0.8rem; color: var(--ink-500, #64748b); margin-bottom: 0; }
 </style>

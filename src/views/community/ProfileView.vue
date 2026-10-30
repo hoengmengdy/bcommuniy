@@ -246,7 +246,7 @@ const portfolioProjects = [
   object-fit: cover;
   border: 4px solid var(--surface-bg);
   box-shadow: none;
-  background: #ffffff;
+  background: var(--surface, #ffffff);
 }
 
 .profile-actions {
@@ -295,20 +295,20 @@ const portfolioProjects = [
 }
 
 .skill-tag {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.5);
   backdrop-filter: blur(4px);
   color: var(--text-primary);
   padding: 0.4rem 1rem;
   border-radius: 100px;
   font-size: 0.85rem;
   font-weight: 600;
-  border: 1px solid rgba(255,255,255,0.8);
+  border: 1px solid rgb(var(--surface-rgb, 255 255 255) / 0.8);
   box-shadow: none;
   transition: all var(--transition-fast);
 }
 
 .skill-tag:hover {
-  background: white;
+  background: var(--surface, white);
   transform: translateY(-1px);
 }
 
@@ -370,19 +370,19 @@ const portfolioProjects = [
   display: flex;
   flex-direction: column;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.4);
   backdrop-filter: blur(8px);
   border-radius: 12px;
   text-decoration: none;
   color: inherit;
   transition: all var(--transition-fast);
-  border: 1px solid rgba(255,255,255,0.8);
+  border: 1px solid rgb(var(--surface-rgb, 255 255 255) / 0.8);
   box-shadow: none;
 }
 
 .portfolio-item:hover {
   transform: translateY(-2px);
-  background: rgba(255,255,255,0.8);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.8);
   box-shadow: none;
 }
 
@@ -395,12 +395,12 @@ const portfolioProjects = [
 
 .project-name {
   font-weight: 600;
-  color: #111827;
+  color: var(--ink-strong, #111827);
 }
 
 .project-desc {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--ink-500, #6b7280);
 }
 
 .empty-state {

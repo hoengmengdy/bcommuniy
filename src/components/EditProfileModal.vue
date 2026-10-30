@@ -146,8 +146,8 @@ function handleSave() {
 .photo-editor { display: flex; align-items: center; gap: 1rem; }
 .photo-preview { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; }
 .photo-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.photo-help { font-size: 0.8rem; color: #64748b; margin: 0.5rem 0 0; }
-.photo-error { color: #b91c1c; font-size: 0.85rem; margin: 0; }
+.photo-help { font-size: 0.8rem; color: var(--ink-500, #64748b); margin: 0.5rem 0 0; }
+.photo-error { color: var(--red-ink, #b91c1c); font-size: 0.85rem; margin: 0; }
 button:disabled { opacity: 0.6; cursor: wait; }
 
 .modal-backdrop {
@@ -165,7 +165,7 @@ button:disabled { opacity: 0.6; cursor: wait; }
 }
 
 .modal-content {
-  background: #ffffff;
+  background: var(--surface, #ffffff);
   border-radius: 16px;
   width: 100%;
   max-width: 500px;
@@ -185,20 +185,20 @@ button:disabled { opacity: 0.6; cursor: wait; }
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--surface-3, #f1f5f9);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
-  color: #0f172a;
+  color: var(--ink-strong, #0f172a);
 }
 
 .close-btn {
   background: none;
   border: none;
   font-size: 1.2rem;
-  color: #94a3b8;
+  color: var(--ink-400, #94a3b8);
   cursor: pointer;
 }
 
@@ -218,25 +218,25 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .form-group label {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--ink-600, #475569);
 }
 
 .form-input:disabled {
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--surface-3, #f1f5f9);
+  color: var(--ink-500, #64748b);
   cursor: not-allowed;
 }
 
 .field-hint {
   margin: 0.35rem 0 0;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--ink-500, #64748b);
 }
 
 .form-input {
   width: 100%;
   padding: 0.75rem;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--line, #e2e8f0);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.95rem;
@@ -250,7 +250,7 @@ button:disabled { opacity: 0.6; cursor: wait; }
 
 .modal-footer {
   padding: 1.25rem 1.5rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--surface-3, #f1f5f9);
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
@@ -266,13 +266,13 @@ button:disabled { opacity: 0.6; cursor: wait; }
 }
 
 .btn-cancel {
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
   border: none;
-  color: #475569;
+  color: var(--ink-600, #475569);
 }
 
 .btn-cancel:hover {
-  background: #e2e8f0;
+  background: var(--line, #e2e8f0);
 }
 
 .btn-save {

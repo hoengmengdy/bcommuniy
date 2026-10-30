@@ -71,7 +71,7 @@ async function sendTo(member) {
   max-height: 75vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--surface, #ffffff);
   border-radius: 20px 20px 0 0;
   padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
   box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.15);
@@ -105,14 +105,14 @@ async function sendTo(member) {
   height: 34px;
   border: none;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--surface-3, #f1f5f9);
   cursor: pointer;
 }
 
 .send-search {
   width: 100%;
   padding: 0.7rem 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line, #e2e8f0);
   border-radius: 12px;
   font-family: inherit;
   font-size: 16px;
@@ -148,7 +148,7 @@ async function sendTo(member) {
   flex: 1;
   font-weight: 600;
   font-size: 0.95rem;
-  color: #111827;
+  color: var(--ink-strong, #111827);
 }
 
 .send-action {
@@ -162,6 +162,6 @@ async function sendTo(member) {
 
 .send-empty {
   text-align: center;
-  color: #94a3b8;
+  color: var(--ink-400, #94a3b8);
 }
 </style>

@@ -2,10 +2,10 @@
 
 :root {
   /* Vibrant Tech Light Palette */
-  --bg-primary: #f8fafc;
-  --bg-secondary: rgba(255, 255, 255, 0.7);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
+  --bg-primary: var(--surface-2, #f8fafc);
+  --bg-secondary: rgb(var(--surface-rgb, 255 255 255) / 0.7);
+  --text-primary: var(--ink-strong, #0f172a);
+  --text-secondary: var(--ink-600, #475569);
   --accent-color: #4f46e5;
   --accent-hover: #4338ca;
   --accent-glow: rgba(79, 70, 229, 0.15);
@@ -14,21 +14,21 @@
   /* Brand purple and the shared card look */
   --brand: #7c3aed;
   --brand-hover: #6d28d9;
-  --brand-soft: #f3f0ff;
-  --card-bg: #ffffff;
+  --brand-soft: var(--tint, #f3f0ff);
+  --card-bg: var(--surface, #ffffff);
   --card-border: rgba(0, 0, 0, 0.05);
   --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(76, 29, 149, 0.04);
   --card-hover-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(76, 29, 149, 0.07);
   --font-sans: Inter, "Kantumruy Pro", "Noto Sans Khmer", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Premium Glassmorphism Elevation */
-  --surface-bg: rgba(255, 255, 255, 0.75);
-  --surface-border: rgba(255, 255, 255, 1);
+  --surface-bg: rgb(var(--surface-rgb, 255 255 255) / 0.75);
+  --surface-border: rgb(var(--surface-rgb, 255 255 255) / 1);
   --surface-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
   --surface-hover-shadow: 0 12px 48px 0 rgba(31, 38, 135, 0.12);
   --glass-blur: blur(16px);
     
-  --inset-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  --inset-shadow: inset 0 0 0 1px rgb(var(--surface-rgb, 255 255 255) / 0.5);
   
   /* Borders & Radius */
   --radius-sm: 8px;
@@ -39,6 +39,40 @@
   /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark theme: components use var(--token, light value), so only the tokens change here. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #171a26;
+  --surface-rgb: 23 26 38;
+  --surface-2: #1c2030;
+  --surface-3: #232838;
+  --line: #2e3446;
+  --ink-strong: #eceef5;
+  --ink-700: #d0d5e0;
+  --ink-600: #b6bdcc;
+  --ink-500: #9aa3b5;
+  --ink-400: #7d879b;
+  --ink-300: #4a5368;
+  --tint: #272040;
+  --tint-strong: #4c3d7a;
+  --tint-red: #3b1f27;
+  --tint-green: #15302a;
+  --tint-amber: #362b16;
+  --brand-ink: #c4b5fd;
+  --indigo-ink: #a5b4fc;
+  --green-ink: #6ee7b7;
+  --amber-ink: #fcd34d;
+  --red-ink: #f87171;
+  --card-border: rgba(255, 255, 255, 0.07);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --card-hover-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] body {
+  background-color: #11131c;
+  background-image: linear-gradient(135deg, #12111f 0%, #11131c 50%, #0f1520 100%);
 }
 
 * {
@@ -89,7 +123,7 @@ button, input, select, textarea {
 .rich-text {
   font-size: 15.5px;
   line-height: 1.65;
-  color: #334155;
+  color: var(--ink-700, #334155);
   overflow-wrap: anywhere;
 }
 
@@ -98,7 +132,7 @@ button, input, select, textarea {
 .rich-text ol { padding-left: 1.4em; }
 .rich-text li + li { margin-top: 0.25em; }
 .rich-text strong,
-.rich-text b { font-weight: 700; color: #1e293b; }
+.rich-text b { font-weight: 700; color: var(--ink-strong, #1e293b); }
 .rich-text h3,
 .rich-text h4 { font-size: 1.05em; margin: 0.9em 0 0.3em; }
 .rich-text a { color: var(--brand); text-decoration: none; word-break: break-word; }
@@ -106,8 +140,8 @@ button, input, select, textarea {
 .rich-text code {
   font-family: 'Fira Code', Consolas, monospace;
   font-size: 0.88em;
-  background: #f4f2fb;
-  color: #5b21b6;
+  background: var(--tint, #f4f2fb);
+  color: var(--brand-ink, #5b21b6);
   padding: 0.1em 0.35em;
   border-radius: 5px;
 }
@@ -120,11 +154,13 @@ button, input, select, textarea {
   font-size: 0.88em;
   line-height: 1.55;
 }
+html[data-theme="dark"] .rich-text a { color: #b69cff; }
+html[data-theme="dark"] .rich-text pre { background: #0c0e16; border: 1px solid var(--line); }
 .rich-text pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
 .rich-text blockquote {
-  border-left: 3px solid #ddd6fe;
+  border-left: 3px solid var(--tint-strong, #ddd6fe);
   padding-left: 0.85em;
-  color: #64748b;
+  color: var(--ink-500, #64748b);
 }
 
 .btn {
@@ -146,7 +182,7 @@ button, input, select, textarea {
   background: var(--accent-gradient);
   color: white;
   box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.39);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgb(var(--surface-rgb, 255 255 255) / 0.1);
 }
 
 .btn-primary:hover {
@@ -168,8 +204,8 @@ button, input, select, textarea {
 }
 
 .btn-secondary:hover {
-  background: white;
-  border-color: #cbd5e1;
+  background: var(--surface, white);
+  border-color: var(--ink-300, #cbd5e1);
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
@@ -182,9 +218,9 @@ button, input, select, textarea {
 .input-field {
   width: 100%;
   padding: 1rem 1.25rem;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.4);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgb(var(--surface-rgb, 255 255 255) / 0.8);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: inherit;
@@ -195,7 +231,7 @@ button, input, select, textarea {
 
 .input-field:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.8);
   border-color: var(--accent-color);
   box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(79, 70, 229, 0.15);
   transform: translateY(-1px);
@@ -252,11 +288,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--ink-300, #cbd5e1);
   border-radius: 5px;
   border: 2px solid var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--ink-400, #94a3b8);
 }

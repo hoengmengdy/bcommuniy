@@ -74,7 +74,7 @@ async function requestMentor(id) {
 
 .page-title {
   font-size: 2rem;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
 }
 
 .header-section {
@@ -141,8 +141,8 @@ async function requestMentor(id) {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: #f1f5f9;
-  border: 2px solid white;
+  background: var(--surface-3, #f1f5f9);
+  border: 2px solid var(--surface, white);
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
@@ -153,8 +153,8 @@ async function requestMentor(id) {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #9ca3af;
-  border: 2px solid white;
+  background: var(--ink-400, #9ca3af);
+  border: 2px solid var(--surface, white);
 }
 
 .status-indicator.online {

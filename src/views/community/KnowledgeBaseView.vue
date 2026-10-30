@@ -263,11 +263,11 @@ onMounted(() => store.load())
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: var(--line, #e2e8f0);
 }
 
 .author-name {
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--ink-strong, #1a1a1a);
 }
 </style>

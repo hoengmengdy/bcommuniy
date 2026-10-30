@@ -49,7 +49,7 @@
 .hero-section {
   padding: 4rem 2rem;
   text-align: center;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, var(--surface-2, #f8fafc) 0%, var(--surface-3, #f1f5f9) 100%);
 }
 
 .hero-title {
@@ -107,7 +107,7 @@
 .team-section {
   padding: 3rem 2rem;
   text-align: center;
-  background: #ffffff;
+  background: var(--surface, #ffffff);
 }
 
 .team-section h2 {

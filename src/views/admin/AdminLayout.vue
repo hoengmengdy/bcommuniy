@@ -65,7 +65,7 @@ import { RouterView, RouterLink } from 'vue-router'
 .sidebar-header {
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgb(var(--surface-rgb, 255 255 255) / 0.4);
 }
 
 .sidebar-header h2 {
@@ -97,14 +97,14 @@ import { RouterView, RouterLink } from 'vue-router'
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgb(var(--surface-rgb, 255 255 255) / 0.5);
   color: var(--text-primary);
 }
 
 .nav-item.active {
   background: var(--accent-glow);
   color: var(--accent-color);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgb(var(--surface-rgb, 255 255 255) / 0.4);
 }
 
 .back-link {
