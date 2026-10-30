@@ -5,13 +5,17 @@ import PostCard from '@/components/PostCard.vue'
 import PostSkeleton from '@/components/PostSkeleton.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { api } from '@/services/api'
 
 const store = usePostsStore()
 const router = useRouter()
+// Top Mentors shows the real highest-reputation members with their own profile photos.
+const mentors = ref([])
 const isLoading = ref(true)
 const activeTag = ref('All Topics')
 
 onMounted(() => {
+  api('/leaderboard?page=1&per_page=3').then(res => { mentors.value = res.data || [] }).catch(() => {})
   setTimeout(() => {
     isLoading.value = false
   }, 800)
@@ -102,38 +106,17 @@ const filteredPosts = computed(() => {
         <div class="sidebar-widget glass-panel">
           <h3 class="widget-title">Top Mentors</h3>
           <div class="suggestion-list">
-            <div class="suggestion-item">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Teacher1" alt="Avatar" class="widget-avatar" />
+            <div v-for="m in mentors" :key="m.id" class="suggestion-item mentor-item" @click="router.push(`/profile/${m.id}`)">
+              <img :src="m.avatar" :alt="m.name" class="widget-avatar" />
               <div class="widget-info">
-                <span class="widget-name">David (Teacher)</span>
-                <span class="widget-sub">Reputation: 3200</span>
+                <span class="widget-name">{{ m.name }}<template v-if="m.profileRole"> ({{ m.profileRole }})</template></span>
+                <span class="widget-sub">Reputation: {{ m.reputation }}</span>
               </div>
-              <button class="follow-btn" title="Ask for mentorship" aria-label="Ask for mentorship" @click="router.push('/mentorship')">
+              <button class="follow-btn" title="Ask for mentorship" aria-label="Ask for mentorship" @click.stop="router.push('/mentorship')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
               </button>
             </div>
-            
-            <div class="suggestion-item">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Senior1" alt="Avatar" class="widget-avatar" />
-              <div class="widget-info">
-                <span class="widget-name">Sarah (Senior Dev)</span>
-                <span class="widget-sub">Reputation: 1450</span>
-              </div>
-              <button class="follow-btn" title="Ask for mentorship" aria-label="Ask for mentorship" @click="router.push('/mentorship')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              </button>
-            </div>
-            
-            <div class="suggestion-item">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Senior2" alt="Avatar" class="widget-avatar" />
-              <div class="widget-info">
-                <span class="widget-name">Michael (DBA)</span>
-                <span class="widget-sub">Reputation: 980</span>
-              </div>
-              <button class="follow-btn" title="Ask for mentorship" aria-label="Ask for mentorship" @click="router.push('/mentorship')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              </button>
-            </div>
+            <p v-if="!mentors.length" class="widget-sub">No mentors yet.</p>
           </div>
           <button class="link-btn" @click="router.push('/leaderboard')">View Leaderboard</button>
         </div>
@@ -358,6 +341,8 @@ const filteredPosts = computed(() => {
   flex-shrink: 0;
 }
 
+.widget-avatar { object-fit: cover; background: #e2e8f0; }
+
 .widget-icon {
   display: flex;
   align-items: center;
@@ -408,6 +393,9 @@ const filteredPosts = computed(() => {
   width: 14px;
   height: 14px;
 }
+
+.mentor-item { cursor: pointer; }
+.mentor-item:hover .widget-name { color: #3b82f6; }
 
 .resource-link {
   text-decoration: none;
