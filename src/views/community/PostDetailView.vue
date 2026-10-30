@@ -8,6 +8,7 @@ import CommentSection from '@/components/CommentSection.vue'
 import { timeAgo } from '@/utils/time'
 import { sharePost } from '@/utils/share'
 import SendPostModal from '@/components/SendPostModal.vue'
+import { renderRichText } from '@/utils/richText'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,7 +60,7 @@ async function deletePost() {
         <div class="post-left">
           <!-- Always show content text -->
           <div class="post-content-area">
-            <h2 v-if="post.title">{{ post.title }}</h2><p class="post-text">{{ post.content }}</p><CodeBlock v-if="post.codeSnippet" :code="post.codeSnippet" :language="post.codeLanguage" />
+            <h2 v-if="post.title">{{ post.title }}</h2><div v-if="post.content" class="post-text rich-text" v-html="renderRichText(post.content)"></div><CodeBlock v-if="post.codeSnippet" :code="post.codeSnippet" :language="post.codeLanguage" />
           </div>
 
           <!-- Image always shown when available -->
@@ -378,9 +379,8 @@ async function deletePost() {
 }
 
 .post-text {
-  font-size: 0.95rem;
-  color: #374151;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   margin: 0 0 1.5rem 0;
 }
 

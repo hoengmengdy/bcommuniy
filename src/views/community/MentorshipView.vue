@@ -227,6 +227,9 @@ async function requestMentor(id) {
 }
 
 @media (max-width: 768px) {
+  .mentorship-container {
+    padding: 0 1rem 2rem;
+  }
   .header-section {
     flex-direction: column;
     align-items: flex-start;

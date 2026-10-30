@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { usePostsStore } from '@/stores/posts'
 import { useUiStore } from '@/stores/ui'
 
@@ -13,6 +13,17 @@ const codeSnippet = ref('')
 const codeLanguage = ref('javascript')
 const imageUrl = ref('')
 const fileInput = ref(null)
+const textarea = ref(null)
+const posting = ref(false)
+const canPost = computed(() => !posting.value && Boolean(content.value.trim() || codeSnippet.value.trim() || imageUrl.value))
+
+// The textarea grows with the text, up to a limit, then scrolls.
+function autoGrow() {
+  const el = textarea.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 320) + 'px'
+}
 
 function handleImageUpload(event) {
   const file = event.target.files[0]
@@ -26,7 +37,9 @@ function handleImageUpload(event) {
 }
 
 async function submitPost() {
-  if (content.value.trim() || codeSnippet.value.trim() || imageUrl.value) {
+  if (!canPost.value) return
+  posting.value = true
+  try {
     const created = await store.addPost(content.value, selectedTag.value, codeSnippet.value, codeLanguage.value, false, imageUrl.value, '')
     if (!created) return
     content.value = ''
@@ -34,292 +47,250 @@ async function submitPost() {
     imageUrl.value = ''
     showCodeInput.value = false
     selectedTag.value = '#General'
+    nextTick(autoGrow)
     uiStore.addToast('Post published successfully!', 'success')
+  } finally {
+    posting.value = false
   }
 }
 </script>
 
 <template>
-  <div class="create-post glass-panel">
+  <section class="create-post glass-panel" aria-label="Create a post">
     <div class="input-row">
-      <img :src="store.currentUser.avatar" alt="Avatar" class="avatar" />
-      <div class="input-wrapper">
-        <textarea 
-          v-model="content" 
-          class="post-input" 
-          placeholder="Share something with the community..."
-          rows="3"
-        ></textarea>
-      </div>
+      <img :src="store.currentUser.avatar" :alt="store.currentUser.name" class="avatar" />
+      <textarea
+        ref="textarea"
+        v-model="content"
+        class="post-input"
+        placeholder="Share something with the community..."
+        aria-label="Post text"
+        rows="2"
+        @input="autoGrow"
+      ></textarea>
     </div>
-    
-    <div v-if="showCodeInput" class="code-input-section animate-fade-in">
+
+    <div v-if="showCodeInput" class="code-input-section">
       <div class="code-header">
-        <span class="code-header-title" style="font-size: 0.85rem; font-weight: 600; color: #64748b;">Code Snippet</span>
-        <button class="icon-btn" @click="showCodeInput = false" title="Remove Code">✕</button>
+        <span class="code-header-title">Code Snippet</span>
+        <button class="icon-btn" @click="showCodeInput = false" title="Remove code" aria-label="Remove code">✕</button>
       </div>
-      <textarea 
-        v-model="codeSnippet" 
-        class="code-textarea" 
+      <textarea
+        v-model="codeSnippet"
+        class="code-textarea"
         placeholder="Paste your code here..."
+        aria-label="Code snippet"
         rows="5"
       ></textarea>
     </div>
 
-    <div v-if="imageUrl" class="image-preview-section animate-fade-in">
-      <img :src="imageUrl" alt="Preview" class="image-preview" />
-      <button class="remove-image-btn" @click="imageUrl = ''" title="Remove Image">✕</button>
+    <div v-if="imageUrl" class="image-preview-section">
+      <img :src="imageUrl" alt="Selected image preview" class="image-preview" />
+      <button class="remove-image-btn" @click="imageUrl = ''" title="Remove image" aria-label="Remove image">✕</button>
     </div>
-    
+
     <div class="action-row">
-      <div class="left-actions">
-        <select v-model="selectedTag" class="tag-selector">
-          <option v-for="tag in availableTags" :key="tag" :value="tag">
-            {{ tag }}
-          </option>
-        </select>
-        <button class="action-btn" @click="showCodeInput = !showCodeInput" :class="{ active: showCodeInput }">
-          <svg class="action-icon" style="color: #8b5cf6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="16 18 22 12 16 6"></polyline>
-            <polyline points="8 6 2 12 8 18"></polyline>
-          </svg>
-          Code
-        </button>
-        <button class="action-btn" @click="fileInput.click()">
-          <svg class="action-icon" style="color: #3b82f6;" viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM216,56V158.33l-46.63-46.62a16,16,0,0,0-22.62,0L96,162.34,59.31,125.66a16,16,0,0,0-22.62,0L40,129V56ZM40,151.66l27.31-27.32L118,175.05,82.63,200H40ZM216,200H102.26l44.43-31.11,69.31-69.31L216,101.66V200ZM104,96A12,12,0,1,1,92,84,12,12,0,0,1,104,96Z"/></svg>
-          Image
-        </button>
-        <input type="file" ref="fileInput" accept="image/*" style="display: none" @change="handleImageUpload" />
-      </div>
-      
-      <div class="right-actions">
-        <button class="post-submit-btn" @click="submitPost" :disabled="!content.trim() && !codeSnippet.trim() && !imageUrl">
-          Post
-        </button>
-      </div>
+      <select v-model="selectedTag" class="tag-selector" aria-label="Topic" title="Topic">
+        <option v-for="tag in availableTags" :key="tag" :value="tag">{{ tag }}</option>
+      </select>
+      <button class="tool-btn" :class="{ active: showCodeInput }" :aria-pressed="showCodeInput" title="Add code"
+        @click="showCodeInput = !showCodeInput">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polyline points="16 18 22 12 16 6"></polyline>
+          <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+        <span>Code</span>
+      </button>
+      <button class="tool-btn" title="Add image" @click="fileInput.click()">
+        <svg class="tool-icon image-icon" viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM216,56V158.33l-46.63-46.62a16,16,0,0,0-22.62,0L96,162.34,59.31,125.66a16,16,0,0,0-22.62,0L40,129V56ZM40,151.66l27.31-27.32L118,175.05,82.63,200H40ZM216,200H102.26l44.43-31.11,69.31-69.31L216,101.66V200ZM104,96A12,12,0,1,1,92,84,12,12,0,0,1,104,96Z"/></svg>
+        <span>Image</span>
+      </button>
+      <input type="file" ref="fileInput" accept="image/*" hidden @change="handleImageUpload" />
+      <span class="spacer"></span>
+      <button class="post-submit-btn" :disabled="!canPost" @click="submitPost">
+        {{ posting ? 'Posting…' : 'Post' }}
+      </button>
     </div>
-  </div>
+  </section>
 </template>
 
 <style scoped>
 .create-post {
-  padding: 1.5rem;
-  margin-bottom: 2rem;
+  padding: 16px 18px 12px;
+  margin-bottom: 16px;
+  overflow: visible;
 }
 
 .input-row {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 12px;
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  margin-top: 0.2rem;
-}
-
-.input-wrapper {
-  position: relative;
-  flex: 1;
+  background: #ede9fe;
 }
 
 .post-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
-  padding: 0.5rem 0;
-  font-family: inherit;
-  font-size: 1.05rem;
-  line-height: 1.5;
-  color: #1a1a1a;
-  transition: all var(--transition-fast);
-  resize: vertical;
-  min-height: 80px;
-  box-shadow: none;
+  padding: 9px 0 6px;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #0f172a;
+  resize: none;
+  overflow-y: auto;
+  min-height: 52px;
   outline: none;
 }
 
-.post-input::placeholder {
-  color: #9ca3af;
-}
+.post-input::placeholder { color: #94a3b8; }
 
 .action-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 1rem;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f2f6;
 }
 
-.left-actions {
-  display: flex;
-  gap: 0.8rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.action-btn {
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #4b5563;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0.4rem 0.6rem;
-  border-radius: 8px;
-  transition: all var(--transition-fast);
-}
-
-.action-btn:hover {
-  background: rgba(255,255,255,0.8);
-  color: var(--accent-color);
-  transform: translateY(-2px);
-  box-shadow: none;
-}
-
-.action-icon {
-  width: 18px;
-  height: 18px;
-}
+.spacer { flex: 1; }
 
 .tag-selector {
-  background: rgba(255,255,255,0.5);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.8);
+  height: 32px;
+  background: var(--brand-soft);
+  border: 1px solid transparent;
   border-radius: 8px;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.85rem;
+  padding: 0 6px;
+  font-size: 13px;
   font-weight: 600;
-  color: #475569;
+  color: #6d28d9;
   cursor: pointer;
-  outline: none;
-  transition: all var(--transition-fast);
-}
-.tag-selector:hover {
-  background: white;
+  transition: all 0.15s ease;
 }
 
-.right-actions {
-  display: flex;
+.tag-selector:hover { border-color: #ddd6fe; }
+
+.tool-btn {
+  height: 32px;
+  background: none;
+  border: none;
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
+  gap: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 10px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
 }
+
+.tool-btn:hover { background: #f5f3ff; color: var(--brand); }
+.tool-btn.active { background: var(--brand-soft); color: var(--brand); }
+
+.tool-icon { width: 17px; height: 17px; color: var(--brand); }
+.image-icon { color: #3b82f6; }
 
 .post-submit-btn {
-  background: var(--accent-gradient);
+  height: 36px;
+  padding: 0 20px;
+  background: var(--brand);
   color: #ffffff;
-  border: 1px solid rgba(255,255,255,0.1);
-  padding: 0.5rem 1.25rem;
-  border-radius: 100px;
+  border: none;
+  border-radius: 10px;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 14px;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: none;
+  transition: all 0.15s ease;
 }
 
-.post-submit-btn:hover:not(:disabled) {
-  box-shadow: none;
-  transform: translateY(-2px);
-  filter: brightness(1.1);
-}
+.post-submit-btn:hover:not(:disabled) { background: var(--brand-hover); }
+.post-submit-btn:active:not(:disabled) { transform: scale(0.98); }
 
 .post-submit-btn:disabled {
-  background: #c4b5fd;
+  background: #ddd6fe;
   cursor: not-allowed;
 }
 
-/* Code Section styling for soft theme */
+/* Code snippet */
 .code-input-section {
-  margin: 1rem 0 1.5rem 0;
-  border-radius: 12px;
+  margin: 10px 0 0 52px;
+  border-radius: 10px;
   overflow: hidden;
-  background: rgba(248, 250, 252, 0.7);
-  backdrop-filter: blur(8px);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(203, 213, 225, 0.8);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
 .code-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 1rem;
-  background: rgba(226, 232, 240, 0.6);
-  border-bottom: 1px solid rgba(203, 213, 225, 0.6);
+  padding: 4px 6px 4px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.code-header .tag-selector {
-  background: rgba(255, 255, 255, 0.8);
-  color: #334155;
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-}
-
-.code-header .tag-selector:hover {
-  background: #ffffff;
-}
+.code-header-title { font-size: 12.5px; font-weight: 600; color: #64748b; }
 
 .code-header .icon-btn {
   color: #64748b;
   width: 28px;
   height: 28px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
-.code-header .icon-btn:hover {
-  color: #ef4444;
-  background: rgba(254, 226, 226, 0.8);
-  border-color: rgba(252, 165, 165, 0.5);
-}
+.code-header .icon-btn:hover { color: #ef4444; background: #fee2e2; }
 
 .code-textarea {
   width: 100%;
+  display: block;
   background: transparent;
   border: none;
-  padding: 1rem;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 0.9rem;
+  padding: 12px;
+  font-family: 'Fira Code', Consolas, monospace;
+  font-size: 13.5px;
   color: #1e293b;
   resize: vertical;
-  min-height: 120px;
-}
-
-.code-textarea:focus {
+  min-height: 110px;
   outline: none;
 }
 
-/* Image Preview Section */
+/* Image preview */
 .image-preview-section {
   position: relative;
-  margin: 1rem 0;
+  margin: 10px 0 0 52px;
   border-radius: 12px;
   overflow: hidden;
   display: inline-block;
-  max-width: 100%;
+  max-width: calc(100% - 52px);
 }
 
 .image-preview {
+  display: block;
   max-width: 100%;
-  max-height: 300px;
+  max-height: 280px;
   object-fit: contain;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.4);
 }
 
 .remove-image-btn {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(15, 23, 42, 0.65);
   color: white;
   width: 28px;
   height: 28px;
@@ -329,83 +300,25 @@ async function submitPost() {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
   font-size: 0.8rem;
 }
 
-.remove-image-btn:hover {
-  background: #ef4444;
-  transform: scale(1.1);
-}
+.remove-image-btn:hover { background: #ef4444; }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .create-post {
-    padding: 1rem;
-    margin-bottom: 1.5rem;
+    padding: 12px 12px 10px;
+    margin-bottom: 12px;
   }
-  
-  .avatar {
-    width: 36px;
-    height: 36px;
-  }
-  
-  .post-input {
-    font-size: 1rem;
-  }
+
+  .avatar { width: 36px; height: 36px; }
+  .post-input { padding-top: 7px; }
+  .code-input-section,
+  .image-preview-section { margin-left: 0; max-width: 100%; }
 }
 
-/* Extra Input Sections (Image & Link) */
-.extra-input-section {
-  margin: 1rem 0 1.5rem 0;
-  padding: 0.8rem 1rem;
-  display: flex;
-  gap: 0.8rem;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  transition: all var(--transition-normal);
-}
-
-.extra-input-section:focus-within {
-  background: #ffffff;
-  border-color: var(--accent-color);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.1);
-}
-
-.extra-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 0.95rem;
-  color: #1a1a1a;
-}
-
-.extra-input::placeholder {
-  color: #9ca3af;
-}
-
-.close-btn {
-  width: 28px;
-  height: 28px;
-  background: rgba(0,0,0,0.05);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  color: #6b7280;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: #fee2e2;
-  color: #ef4444;
-  border-color: #fca5a5;
-  transform: none;
+@media (max-width: 380px) {
+  .tool-btn span { display: none; }
 }
 </style>

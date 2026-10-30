@@ -1,17 +1,32 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { usePostsStore } from '@/stores/posts'
 import NotificationsDropdown from './NotificationsDropdown.vue'
 
 const store = usePostsStore()
 const showNotifications = ref(false)
 const route = useRoute()
+const router = useRouter()
 const signOut = () => store.logout()
 const notificationWrapperRef = ref(null)
 
 const showProfileMenu = ref(false)
 const profileWrapperRef = ref(null)
+
+// Search filters the home feed through ?q=, so results can be shared and survive a refresh.
+const searchText = ref(String(route.query.q || ''))
+const showMobileSearch = ref(false)
+const mobileSearchInput = ref(null)
+function submitSearch() {
+  const q = searchText.value.trim()
+  router.push({ path: '/', query: q ? { q } : {} })
+  showMobileSearch.value = false
+}
+function toggleMobileSearch() {
+  showMobileSearch.value = !showMobileSearch.value
+  if (showMobileSearch.value) nextTick(() => mobileSearchInput.value?.focus())
+}
 
 const closeDropdown = (e) => {
   if (showNotifications.value && notificationWrapperRef.value && !notificationWrapperRef.value.contains(e.target)) {
@@ -44,17 +59,18 @@ onUnmounted(() => {
 watch(route, () => {
   showNotifications.value = false
   showProfileMenu.value = false
+  searchText.value = String(route.query.q || '')
 })
 </script>
 
 <template>
-  <nav ref="navRef" class="navbar-wrapper">
+  <nav ref="navRef" class="navbar-wrapper" aria-label="Main">
     <div class="navbar-content">
-      
+
       <!-- Brand -->
-      <RouterLink to="/" class="brand">
+      <RouterLink to="/" class="brand" aria-label="Bcommunity home">
         <div class="brand-logo">
-          <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M228.45,71.16l-96-56a15.82,15.82,0,0,0-16.1,0l-96,55.93A16,16,0,0,0,12.35,85l1.41,100.86a15.94,15.94,0,0,0,7.91,13.78l96,56.09a15.82,15.82,0,0,0,16.1,0l96-56a16,16,0,0,0,7.88-13.82L244,85A15.93,15.93,0,0,0,228.45,71.16ZM128,32.41,203,76.15,128,119.89,53,76.15ZM43.43,94.2l76.57,44.66v84.71l-75.14-43.9ZM136,223.57V138.86l76.57-44.66.42,1.38-1.55,84.1Z"/>
           </svg>
         </div>
@@ -62,39 +78,48 @@ watch(route, () => {
       </RouterLink>
 
       <!-- Search -->
-      <div class="search-bar">
-        <svg class="search-icon" viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <form class="search-bar" role="search" @submit.prevent="submitSearch">
+        <svg class="search-icon" viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"/>
         </svg>
-        <input type="text" placeholder="Search" class="search-input" />
-      </div>
+        <input v-model="searchText" type="search" placeholder="Search posts, people, topics" class="search-input"
+          aria-label="Search posts" />
+      </form>
 
       <!-- Right Actions -->
       <div class="right-actions">
+        <button class="icon-btn mobile-search-btn" :class="{ 'active-icon': showMobileSearch }" aria-label="Search"
+          title="Search" :aria-expanded="showMobileSearch" @click="toggleMobileSearch">
+          <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"/>
+          </svg>
+        </button>
+
         <div v-if="store.currentUser" class="notification-wrapper" ref="notificationWrapperRef">
-          <button @click="showNotifications = !showNotifications" class="icon-btn" :class="{ 'active-icon': showNotifications }">
-            <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <button @click="showNotifications = !showNotifications" class="icon-btn" :class="{ 'active-icon': showNotifications }"
+            aria-label="Notifications" title="Notifications" :aria-expanded="showNotifications">
+            <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216Z"/>
             </svg>
           </button>
           <NotificationsDropdown v-if="showNotifications" />
         </div>
-        
-        <RouterLink to="/messages" class="icon-btn" active-class="active-icon">
-          <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+
+        <RouterLink to="/messages" class="icon-btn" active-class="active-icon" aria-label="Messages" title="Messages">
+          <svg viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M132,24A100.11,100.11,0,0,0,32,124v84a16,16,0,0,0,16,16h84a100,100,0,0,0,0-200Zm-28,112a12,12,0,1,1,12-12A12,12,0,0,1,104,136Zm28,0a12,12,0,1,1,12-12A12,12,0,0,1,132,136Zm28,0a12,12,0,1,1,12-12A12,12,0,0,1,160,136Z"/>
           </svg>
         </RouterLink>
-        
-        <RouterLink v-if="!store.currentUser" to="/auth" class="btn btn-primary" style="padding: 0.5rem 1.2rem; font-size: 0.85rem; border-radius: 100px; text-decoration: none;">
+
+        <RouterLink v-if="!store.currentUser" to="/auth" class="btn btn-primary sign-in-btn">
           Sign In
         </RouterLink>
-        
+
         <div v-if="store.currentUser" class="profile-wrapper" ref="profileWrapperRef">
           <button class="user-profile" aria-label="Account menu" :aria-expanded="showProfileMenu"
             @click="showProfileMenu = !showProfileMenu">
-            <img :src="store.currentUser.avatar" alt="User Avatar" class="avatar" />
-            <div class="badge">
+            <img :src="store.currentUser.avatar" :alt="store.currentUser.name" class="avatar" />
+            <div class="badge" aria-hidden="true">
               <svg viewBox="0 0 256 256" fill="white" xmlns="http://www.w3.org/2000/svg">
                 <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/>
               </svg>
@@ -114,8 +139,14 @@ watch(route, () => {
           </div>
         </div>
       </div>
-      
     </div>
+
+    <!-- Phone search row -->
+    <form v-if="showMobileSearch" class="mobile-search" role="search" @submit.prevent="submitSearch">
+      <input ref="mobileSearchInput" v-model="searchText" type="search" placeholder="Search posts, people, topics"
+        class="search-input" aria-label="Search posts" />
+      <button type="submit" class="mobile-search-go">Search</button>
+    </form>
   </nav>
 </template>
 
@@ -125,24 +156,22 @@ watch(route, () => {
   top: 0;
   z-index: 100;
   width: 100%;
-  background: var(--surface-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 1px solid var(--surface-border);
-  box-shadow: none;
-  margin-bottom: 2rem;
-  transition: all var(--transition-normal);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  margin-bottom: 24px;
 }
 
 .navbar-content {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  padding: 0.8rem 2rem;
-  max-width: 1400px;
+  height: 64px;
+  padding: 0 24px;
+  max-width: 1360px;
   margin: 0 auto;
-  gap: 1rem;
+  gap: 16px;
 }
 
 /* Brand */
@@ -150,17 +179,13 @@ watch(route, () => {
   display: flex;
   align-items: center;
   text-decoration: none;
-  gap: 0.5rem;
-  justify-self: flex-start;
-  transition: transform 0.2s ease;
-}
-
-.brand:hover {
-  transform: scale(1.02);
+  gap: 8px;
+  flex-shrink: 0;
+  border-radius: 8px;
 }
 
 .brand-logo {
-  color: #7c3aed;
+  color: var(--brand);
   width: 28px;
   height: 28px;
   display: flex;
@@ -176,7 +201,7 @@ watch(route, () => {
 .brand-text {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #1a1a1a;
+  color: #0f172a;
   letter-spacing: -0.02em;
 }
 
@@ -184,54 +209,49 @@ watch(route, () => {
 .search-bar {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px);
-  border-radius: 100px;
-  padding: 0.6rem 1.2rem;
-  flex: 1;
-  max-width: 500px;
-  min-width: 200px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  transition: all var(--transition-normal);
-  box-shadow: none;
-  order: 2;
-  margin: 0 1rem;
+  width: 100%;
+  max-width: 480px;
+  height: 40px;
+  background: #F7F7FA;
+  border: 1px solid #ececf2;
+  border-radius: 12px;
+  padding: 0 14px;
+  transition: all 0.15s ease;
 }
+
+.search-bar:hover { border-color: #e0deeb; }
 
 .search-bar:focus-within {
   background: #ffffff;
-  border-color: #cbd5e1;
-  box-shadow: none;
-  transform: translateY(-1px);
+  border-color: #c4b5fd;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
 .search-icon {
-  width: 18px;
-  height: 18px;
-  color: #9ca3af;
-  margin-right: 0.6rem;
+  width: 17px;
+  height: 17px;
+  color: #94a3b8;
+  margin-right: 10px;
+  flex-shrink: 0;
 }
 
 .search-input {
   border: none;
   background: transparent;
   outline: none;
-  font-family: inherit;
-  font-size: 0.95rem;
-  color: #1a1a1a;
+  font-size: 14.5px;
+  color: #0f172a;
   width: 100%;
 }
 
-.search-input::placeholder {
-  color: #9ca3af;
-}
+.search-input::placeholder { color: #94a3b8; }
 
 /* Right Actions */
 .right-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  order: 3;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .notification-wrapper {
@@ -239,48 +259,61 @@ watch(route, () => {
 }
 
 .icon-btn {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.8);
-  color: var(--text-secondary);
-  width: 42px;
-  height: 42px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 50%;
-  transition: all var(--transition-normal);
-  box-shadow: none;
+  border-radius: 10px;
+  transition: all 0.15s ease;
 }
 
-.icon-btn:hover, .active-icon {
-  background: #ffffff;
-  color: var(--accent-color);
-  transform: translateY(-3px);
-  border-color: #ffffff;
-  box-shadow: none;
+.icon-btn:hover {
+  background: #f4f2fb;
+  color: var(--brand);
+}
+
+.active-icon {
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .icon-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
+}
+
+.mobile-search-btn { display: none; }
+
+.sign-in-btn {
+  padding: 0.5rem 1.2rem;
+  font-size: 0.85rem;
+  border-radius: 10px;
+  text-decoration: none;
 }
 
 .profile-wrapper {
   position: relative;
+  display: flex;
 }
 
 .user-profile {
   position: relative;
-  margin-left: 0.5rem;
+  margin-left: 6px;
   cursor: pointer;
   background: none;
   border: none;
   padding: 0;
-  display: block;
+  display: flex;
   border-radius: 50%;
+  transition: box-shadow 0.15s ease;
 }
+
+.user-profile:hover { box-shadow: 0 0 0 3px #ede9fe; }
 
 .profile-menu {
   position: absolute;
@@ -293,11 +326,11 @@ watch(route, () => {
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
   padding: 0.4rem;
   z-index: 200;
-  animation: menuFade 0.2s ease-out;
+  animation: menuFade 0.15s ease-out;
 }
 
 @keyframes menuFade {
-  from { opacity: 0; transform: translateY(-6px); }
+  from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -339,11 +372,10 @@ watch(route, () => {
   align-items: center;
   gap: 0.6rem;
   width: 100%;
-  padding: 0.8rem 0.75rem;
+  padding: 0.75rem 0.75rem;
   border: none;
   border-radius: 10px;
   background: none;
-  font-family: inherit;
   font-size: 0.95rem;
   font-weight: 600;
   color: #1f2937;
@@ -352,6 +384,7 @@ watch(route, () => {
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
+  transition: background 0.15s ease;
 }
 
 .profile-menu-item:hover,
@@ -360,13 +393,8 @@ watch(route, () => {
   color: #6d28d9;
 }
 
-.profile-menu-item.sign-out {
-  color: #dc2626;
-}
-
-.profile-menu-item.sign-out:hover {
-  background: #fef2f2;
-}
+.profile-menu-item.sign-out { color: #dc2626; }
+.profile-menu-item.sign-out:hover { background: #fef2f2; }
 
 .avatar {
   width: 36px;
@@ -374,13 +402,14 @@ watch(route, () => {
   border-radius: 50%;
   object-fit: cover;
   display: block;
+  background: #ede9fe;
 }
 
 .badge {
   position: absolute;
   bottom: -2px;
   right: -2px;
-  background: var(--accent-color);
+  background: var(--brand);
   border: 2px solid #ffffff;
   border-radius: 50%;
   width: 14px;
@@ -395,72 +424,80 @@ watch(route, () => {
   height: 8px;
 }
 
-@media (max-width: 1024px) {
-  .navbar-content {
-    padding: 0.8rem 1.5rem;
-  }
+.mobile-search {
+  display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  .navbar-content { padding: 0 16px; }
+}
+
+@media (max-width: 767px) {
   .navbar-wrapper {
     margin-bottom: 0;
+    padding-top: env(safe-area-inset-top);
   }
-  
-  /* One compact row on phones; clear the iPhone notch/status bar in the installed app. */
+
+  /* Phones: logo, then search icon, notifications, messages and profile. */
   .navbar-content {
-    flex-wrap: nowrap;
-    padding: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0.5rem;
-    gap: 0.5rem;
+    height: 56px;
+    padding: 0 12px;
+    gap: 8px;
   }
 
-  .brand {
-    order: 1;
-    flex-shrink: 0;
-  }
+  .search-bar { display: none; }
+  .mobile-search-btn { display: flex; }
 
-  .right-actions {
-    order: 2;
-    gap: 0.4rem;
-    flex-shrink: 0;
-  }
-
-  /* The search box isn't wired to anything yet; on phones it only costs space. */
-  .search-bar {
-    display: none;
-  }
+  .right-actions { gap: 2px; }
 
   .icon-btn {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
   }
 
   .icon-btn svg {
-    width: 26px;
-    height: 26px;
+    width: 23px;
+    height: 23px;
   }
 
   /* Let the notifications panel position against the whole navbar, not the small bell. */
-  .notification-wrapper {
-    position: static;
+  .notification-wrapper { position: static; }
+
+  .user-profile { margin-left: 4px; }
+
+  .profile-menu { width: min(260px, calc(100vw - 1.5rem)); }
+
+  .mobile-search {
+    display: flex;
+    gap: 8px;
+    padding: 0 12px 10px;
   }
 
-  /* No hover lift on touch screens; it leaves the active icon misaligned. */
-  .icon-btn:hover,
-  .active-icon {
-    transform: none;
-  }
-
-  .user-profile {
-    margin-left: 0.15rem;
-  }
-
-  .user-profile .avatar {
-    width: 40px;
+  .mobile-search .search-input {
+    flex: 1;
     height: 40px;
+    background: #F7F7FA;
+    border: 1px solid #ececf2;
+    border-radius: 12px;
+    padding: 0 14px;
+    font-size: 16px; /* 16px stops iOS from zooming in on focus. */
   }
 
-  .profile-menu {
-    width: min(260px, calc(100vw - 1.5rem));
+  .mobile-search .search-input:focus { background: #fff; border-color: #c4b5fd; }
+
+  .mobile-search-go {
+    height: 40px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 12px;
+    background: var(--brand);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
   }
+}
+
+@media (max-width: 359px) {
+  .brand-text { display: none; }
 }
 </style>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Kantumruy+Pro:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
 
 :root {
   /* Vibrant Tech Light Palette */
@@ -11,6 +11,16 @@
   --accent-glow: rgba(79, 70, 229, 0.15);
   --accent-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   
+  /* Brand purple and the shared card look */
+  --brand: #7c3aed;
+  --brand-hover: #6d28d9;
+  --brand-soft: #f3f0ff;
+  --card-bg: #ffffff;
+  --card-border: rgba(0, 0, 0, 0.05);
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(76, 29, 149, 0.04);
+  --card-hover-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(76, 29, 149, 0.07);
+  --font-sans: Inter, "Kantumruy Pro", "Noto Sans Khmer", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
   /* Premium Glassmorphism Elevation */
   --surface-bg: rgba(255, 255, 255, 0.75);
   --surface-border: rgba(255, 255, 255, 1);
@@ -27,7 +37,7 @@
   --radius-xl: 24px;
   
   /* Transitions */
-  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -38,38 +48,83 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg-primary);
+  /* Inter has no Khmer glyphs, so Khmer text falls through to Kantumruy Pro / Noto Sans Khmer. */
+  font-family: var(--font-sans);
+  font-size: 15px;
+  background-color: #f7f8ff;
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
-  
-  /* Premium animated mesh gradient background - more muted */
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(124, 58, 237, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
+  background-image: linear-gradient(135deg, #F8F7FF 0%, #F7F9FF 50%, #F4FAFF 100%);
   background-attachment: fixed;
   background-size: cover;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Utilities */
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+/* Utilities: every card in the app shares one clean, white look. */
 .glass-panel {
-  background: var(--surface-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--surface-border);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--surface-shadow), var(--inset-shadow);
+  box-shadow: var(--card-shadow);
   position: relative;
   overflow: hidden;
-  transition: all var(--transition-normal);
+  transition: box-shadow 0.15s ease;
 }
 
 .glass-panel:hover {
-  box-shadow: var(--surface-hover-shadow), var(--inset-shadow);
-  transform: translateY(-2px);
+  box-shadow: var(--card-hover-shadow);
+}
+
+/* Formatted post text (see utils/richText.js). */
+.rich-text {
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: #334155;
+  overflow-wrap: anywhere;
+}
+
+.rich-text > * + * { margin-top: 0.65em; }
+.rich-text ul,
+.rich-text ol { padding-left: 1.4em; }
+.rich-text li + li { margin-top: 0.25em; }
+.rich-text strong,
+.rich-text b { font-weight: 700; color: #1e293b; }
+.rich-text h3,
+.rich-text h4 { font-size: 1.05em; margin: 0.9em 0 0.3em; }
+.rich-text a { color: var(--brand); text-decoration: none; word-break: break-word; }
+.rich-text a:hover { text-decoration: underline; }
+.rich-text code {
+  font-family: 'Fira Code', Consolas, monospace;
+  font-size: 0.88em;
+  background: #f4f2fb;
+  color: #5b21b6;
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+}
+.rich-text pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-size: 0.88em;
+  line-height: 1.55;
+}
+.rich-text pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+.rich-text blockquote {
+  border-left: 3px solid #ddd6fe;
+  padding-left: 0.85em;
+  color: #64748b;
 }
 
 .btn {
