@@ -131,7 +131,7 @@ class Conversation(db.Model):
         last = self.messages[-1] if self.messages else None
         return {"id": self.id, "name": other.name, "avatar": other.to_dict()["avatar"], "phone": other.phone,
                 "participantIds": [m.user_id for m in self.members],
-                "lastMessage": (last.text or {"image": "📷 Photo", "video": "🎬 Video"}.get(last.type, ""))
+                "lastMessage": (last.text or {"image": "📷 Photo", "video": "🎬 Video", "audio": "🎤 Voice message"}.get(last.type, ""))
                 if last else "",
                 "time": iso(last.created_at) if last else iso(self.created_at),
                 "unread": sum(1 for m in self.messages if m.sender_id != viewer_id and not m.is_read),

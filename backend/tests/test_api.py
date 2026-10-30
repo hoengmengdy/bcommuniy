@@ -356,6 +356,12 @@ def test_push_notifications_and_media_messages(client, accounts, monkeypatch):
     message = call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
                    headers=owner["headers"], data={"text": "", "attachment": photo})
     assert message["type"] == "image" and message["attachment"]["url"] == photo["url"]
+    voice = {"name": "Voice message (0:05)", "size": "40 KB", "kind": "audio",
+             "url": "https://abc123.public.blob.vercel-storage.com/chat/voice-1-x.webm"}
+    message = call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
+                   headers=owner["headers"], data={"text": "", "attachment": voice})
+    assert message["type"] == "audio"
+    assert json.loads(sent[-1][1])["body"] == "owner: 🎤 Voice message"
     assert client.post(f"/api/conversations/{chat['id']}/messages", headers=owner["headers"],
                        json={"text": "", "attachment": {**photo, "url": "https://evil.example/chat/x.jpg"}}
                        ).status_code == 400

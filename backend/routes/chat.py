@@ -12,6 +12,7 @@ bp = Blueprint("chat", __name__)
 # Reactions are emoji only: reject letters, digits, spaces and markup characters.
 EMOJI_SAFE = re.compile(r"[A-Za-z0-9\s<>&\"'`]")
 BLOB_URL = re.compile(r"https://[a-z0-9]+\.public\.blob\.vercel-storage\.com/chat/[\w.-]+")
+MEDIA_PREVIEW = {"image": "📷 Photo", "video": "🎬 Video", "audio": "🎤 Voice message"}
 
 
 def conversation_for_user(conversation_id):
@@ -99,7 +100,7 @@ def add_message(conversation_id):
         clean = {"name": string(attachment["name"], "attachment.name", 240, True),
                  "size": string(attachment["size"], "attachment.size", 40, True)}
         if "url" in attachment:
-            clean["kind"] = choice(attachment["kind"], "attachment.kind", ("image", "video"))
+            clean["kind"] = choice(attachment["kind"], "attachment.kind", ("image", "video", "audio"))
             clean["url"] = string(attachment["url"], "attachment.url", 500, True)
             # Only files uploaded to this app's Vercel Blob store, never arbitrary links.
             if not BLOB_URL.fullmatch(clean["url"]):
@@ -113,7 +114,7 @@ def add_message(conversation_id):
         notify(member.user_id, "message", "sent you a message")
     db.session.commit()
     result = message.to_dict(g.user.id)
-    preview = message.text or {"image": "📷 Photo", "video": "🎬 Video"}.get(kind, "New message")
+    preview = message.text or MEDIA_PREVIEW.get(kind, "New message")
     send_to_users([m.user_id for m in conversation.members if m.user_id != g.user.id], "មានគេឆាតមក",
                   f"{g.user.name}: {preview}",
                   f"/messages?c={conversation.id}")

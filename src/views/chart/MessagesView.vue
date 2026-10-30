@@ -130,7 +130,7 @@ function cancelCompose() {
 }
 
 function replyPreview(msg) {
-  return msg.text || (msg.type === 'video' ? '🎬 Video' : msg.type === 'image' ? '📷 Photo' : 'Message')
+  return msg.text || { video: '🎬 Video', image: '📷 Photo', audio: '🎤 Voice message' }[msg.type] || 'Message'
 }
 
 // Insert an emoji at the cursor so people can mix emoji and text.
@@ -143,6 +143,7 @@ function insertEmoji(emoji) {
 }
 
 async function selectChat(id) {
+  stopRecording(false)
   if (!await store.setActiveChat(id)) return
   mobileView.value = 'thread'
   nextTick(() => scrollToBottom())
@@ -172,16 +173,22 @@ async function handleFile(event) {
     return uiStore.addToast(`${kind === 'video' ? 'Videos' : 'Photos'} can be up to ${formatSize(MEDIA_LIMITS[kind])}.`, 'error')
   }
   const ext = kind === 'video' ? VIDEO_EXT[file.type] || 'mp4' : (file.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')
+  await sendMedia(file, kind, `chat/${kind}-${Date.now()}.${ext}`, file.name.slice(0, 240) || kind)
+}
+
+async function sendMedia(file, kind, pathname, name) {
   uploadProgress.value = 0
   try {
-    const blob = await upload(`chat/${kind}-${Date.now()}.${ext}`, file, {
+    const blob = await upload(pathname, file, {
       access: 'public',
       handleUploadUrl: '/api/media/upload',
       headers: authHeaders(),
+      // Recorded audio would otherwise be typed from its extension (.webm → video/webm).
+      contentType: kind === 'audio' ? file.type : undefined,
       onUploadProgress: ({ percentage }) => { uploadProgress.value = Math.round(percentage) },
     })
     const sent = await store.sendMessage(editingMsg.value ? '' : inputMessage.value,
-      { name: file.name.slice(0, 240) || kind, size: formatSize(file.size), url: blob.url, kind }, replyingTo.value?.id)
+      { name, size: formatSize(file.size), url: blob.url, kind }, replyingTo.value?.id)
     if (!sent) return
     cancelCompose()
     nextTick(() => scrollToBottom())
@@ -190,6 +197,57 @@ async function handleFile(event) {
   } finally {
     uploadProgress.value = null
   }
+}
+
+// Voice messages: tap the mic to record, then send or discard.
+const recording = ref(false)
+const recordSeconds = ref(0)
+const VOICE_MAX_SECONDS = 300
+const AUDIO_EXT = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a' }
+let recorder = null
+let recordTimer = null
+let keepRecording = false
+
+const recordClock = computed(() =>
+  `${Math.floor(recordSeconds.value / 60)}:${String(recordSeconds.value % 60).padStart(2, '0')}`)
+
+async function startRecording() {
+  if (!store.activeChat || recording.value || uploadProgress.value !== null) return
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+    return uiStore.addToast('Voice messages are not supported in this browser.', 'error')
+  }
+  let stream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch {
+    return uiStore.addToast('Please allow microphone access to send voice messages.', 'error')
+  }
+  const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t))
+  const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+  const chunks = []
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data) }
+  rec.onstop = () => {
+    stream.getTracks().forEach(t => t.stop())
+    clearInterval(recordTimer)
+    recording.value = false
+    if (!keepRecording || recordSeconds.value < 1 || !chunks.length) return
+    const type = (rec.mimeType || mimeType || 'audio/webm').split(';')[0]
+    const file = new Blob(chunks, { type })
+    sendMedia(file, 'audio', `chat/voice-${Date.now()}.${AUDIO_EXT[type] || 'webm'}`, `Voice message (${recordClock.value})`)
+  }
+  recorder = rec
+  keepRecording = false
+  recordSeconds.value = 0
+  recording.value = true
+  rec.start()
+  recordTimer = setInterval(() => {
+    if (++recordSeconds.value >= VOICE_MAX_SECONDS) stopRecording(true)
+  }, 1000)
+}
+
+function stopRecording(send) {
+  keepRecording = send
+  if (recorder?.state === 'recording') recorder.stop()
 }
 
 function backToList() {
@@ -280,6 +338,7 @@ onMounted(() => {
   window.visualViewport?.addEventListener('scroll', syncViewport)
 })
 onUnmounted(() => {
+  stopRecording(false)
   window.visualViewport?.removeEventListener('resize', syncViewport)
   window.visualViewport?.removeEventListener('scroll', syncViewport)
   root.classList.remove('chat-locked', 'keyboard-open', 'chat-thread-open')
@@ -405,6 +464,8 @@ onUnmounted(() => {
                       class="chat-media" loading="lazy" @click="openMedia(msg.attachment.url)" />
                     <video v-else-if="msg.attachment?.kind === 'video'" :src="msg.attachment.url" class="chat-media"
                       controls playsinline preload="metadata"></video>
+                    <audio v-else-if="msg.attachment?.kind === 'audio'" :src="msg.attachment.url" class="chat-audio"
+                      controls preload="metadata"></audio>
                     <div v-if="msg.text" class="bubble bubble-them">{{ msg.text }}</div>
                   </div>
                   <div v-if="msg.reactions?.length" class="reaction-row">
@@ -427,6 +488,8 @@ onUnmounted(() => {
                     class="chat-media chat-media-me" loading="lazy" @click="openMedia(msg.attachment.url)" />
                   <video v-else-if="msg.attachment?.kind === 'video'" :src="msg.attachment.url" class="chat-media chat-media-me"
                     controls playsinline preload="metadata"></video>
+                  <audio v-else-if="msg.attachment?.kind === 'audio'" :src="msg.attachment.url" class="chat-audio chat-audio-me"
+                    controls preload="metadata"></audio>
                   <div v-if="msg.text || (msg.attachment && !msg.attachment.url)" class="bubble bubble-me">
                     {{ msg.text }}
                     <div v-if="msg.attachment && !msg.attachment.url" class="attachment-card">
@@ -486,7 +549,18 @@ onUnmounted(() => {
           </button>
           <button class="tool-btn emoji-btn" :class="{ active: showEmojiPicker }" title="Emoji" aria-label="Emoji"
             @click="showEmojiPicker = !showEmojiPicker">😊</button>
-          <div class="input-wrap">
+          <div v-if="recording" class="recording-bar" role="status">
+            <span class="rec-dot"></span>
+            <span class="rec-time">{{ recordClock }}</span>
+            <span class="rec-hint">Recording…</span>
+            <button class="tool-btn rec-cancel" title="Discard" aria-label="Discard voice message" @click="stopRecording(false)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+          <div v-else class="input-wrap">
             <input
               ref="messageInput"
               type="text"
@@ -496,7 +570,21 @@ onUnmounted(() => {
               @keyup.enter="handleSend"
             />
           </div>
-          <button class="send-btn" @click="handleSend" :class="{ active: isTyping }">
+          <button v-if="recording" class="send-btn active" title="Send voice message" aria-label="Send voice message"
+            @click="stopRecording(true)">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+          <button v-else-if="!isTyping && !editingMsg" class="send-btn mic-btn" title="Send voice message"
+            aria-label="Send voice message" :disabled="uploadProgress !== null" @click="startRecording">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+              <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+              <path d="M5 10v1a7 7 0 0 0 14 0v-1"></path>
+              <line x1="12" y1="18" x2="12" y2="22"></line>
+            </svg>
+          </button>
+          <button v-else class="send-btn" @click="handleSend" :class="{ active: isTyping }">
             <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
@@ -1253,6 +1341,43 @@ onUnmounted(() => {
 
 video.chat-media { cursor: default; background: #000; }
 
+/* Voice messages */
+.chat-audio {
+  display: block;
+  width: min(260px, 65vw);
+  height: 40px;
+  margin-bottom: 4px;
+}
+
+.chat-audio-me { margin-left: auto; }
+
+.recording-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 24px;
+  padding: 0.25rem 0.4rem 0.25rem 1rem;
+  min-width: 0;
+}
+
+.rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rec-pulse { 50% { opacity: 0.3; } }
+
+.rec-time { font-weight: 700; font-size: 0.9rem; color: #1a1a1a; font-variant-numeric: tabular-nums; }
+.rec-hint { flex: 1; font-size: 0.85rem; color: #94a3b8; }
+.rec-cancel { color: #ef4444; }
+.rec-cancel:hover { background: #fee2e2; color: #dc2626; }
+
 .upload-progress {
   font-size: 0.7rem;
   font-weight: 700;
@@ -1359,6 +1484,10 @@ video.chat-media { cursor: default; background: #000; }
 }
 
 .send-btn.active:hover { background: #6d28d9; }
+
+.mic-btn { background: #ede9fe; color: #7c3aed; }
+.mic-btn:hover { background: #ddd6fe; }
+.mic-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ─── Empty State ─── */
 .empty-state {

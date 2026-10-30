@@ -4,8 +4,10 @@ import CreatePost from '@/components/CreatePost.vue'
 import PostCard from '@/components/PostCard.vue'
 import PostSkeleton from '@/components/PostSkeleton.vue'
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 const store = usePostsStore()
+const router = useRouter()
 const isLoading = ref(true)
 const activeTag = ref('All Topics')
 
@@ -106,7 +108,7 @@ const filteredPosts = computed(() => {
                 <span class="widget-name">David (Teacher)</span>
                 <span class="widget-sub">Reputation: 3200</span>
               </div>
-              <button class="follow-btn">
+              <button class="follow-btn" title="Ask for mentorship" aria-label="Ask for mentorship" @click="router.push('/mentorship')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
               </button>
             </div>
@@ -117,7 +119,7 @@ const filteredPosts = computed(() => {
                 <span class="widget-name">Sarah (Senior Dev)</span>
                 <span class="widget-sub">Reputation: 1450</span>
               </div>
-              <button class="follow-btn">
+              <button class="follow-btn" title="Ask for mentorship" aria-label="Ask for mentorship" @click="router.push('/mentorship')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
               </button>
             </div>
@@ -128,19 +130,19 @@ const filteredPosts = computed(() => {
                 <span class="widget-name">Michael (DBA)</span>
                 <span class="widget-sub">Reputation: 980</span>
               </div>
-              <button class="follow-btn">
+              <button class="follow-btn" title="Ask for mentorship" aria-label="Ask for mentorship" @click="router.push('/mentorship')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
               </button>
             </div>
           </div>
-          <button class="link-btn">View Leaderboard</button>
+          <button class="link-btn" @click="router.push('/leaderboard')">View Leaderboard</button>
         </div>
         
         <!-- Popular Pages Widget -->
         <div class="sidebar-widget glass-panel">
           <h3 class="widget-title">Useful Resources</h3>
           <div class="suggestion-list">
-            <div class="suggestion-item">
+            <a class="suggestion-item resource-link" href="https://vuejs.org/guide/introduction.html" target="_blank" rel="noopener">
               <div class="widget-icon" style="background: #41b883;">
                 <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M2 3h20v2H2V3zm2 4h16v12H4V7zm2 2v8h12V9H6zm2 2h8v2H8v-2z"/></svg>
               </div>
@@ -148,9 +150,9 @@ const filteredPosts = computed(() => {
                 <span class="widget-name">Vue.js Docs</span>
                 <span class="widget-sub">Official Documentation</span>
               </div>
-            </div>
+            </a>
             
-            <div class="suggestion-item">
+            <a class="suggestion-item resource-link" href="https://javascript.info/" target="_blank" rel="noopener">
               <div class="widget-icon" style="background: #f7df1e;">
                 <svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M4 22V2h16v20H4zm2-2h12V4H6v16zm2-4v2h8v-2H8zm0-4v2h8v-2H8z"/></svg>
               </div>
@@ -158,9 +160,9 @@ const filteredPosts = computed(() => {
                 <span class="widget-name">JS Tutorial</span>
                 <span class="widget-sub">JavaScript Info</span>
               </div>
-            </div>
+            </a>
           </div>
-          <button class="link-btn">View all resources</button>
+          <button class="link-btn" @click="router.push('/knowledge')">View all resources</button>
         </div>
         
         <div class="sidebar-widget glass-panel">
@@ -406,6 +408,14 @@ const filteredPosts = computed(() => {
   width: 14px;
   height: 14px;
 }
+
+.resource-link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 10px;
+}
+
+.resource-link:hover .widget-name { color: #3b82f6; }
 
 .link-btn {
   background: none;
