@@ -1,14 +1,32 @@
+import re
 from flask import Blueprint, g, jsonify, request
 from backend.extensions import db
-from backend.models import Comment, Post, PostLike, User
+from backend.models import Comment, Post, PostLike, PushSubscription, User
 from backend.services.auth import login_required, require_owner
 from backend.services.notifications import notify
+from backend.services.push import send_to_users
 from backend.utils.validation import APIError, body, boolean, integer, page, string, strings, url
 
 bp = Blueprint("posts", __name__)
 POST_FIELDS = ("title", "content", "tag", "tags", "codeSnippet", "codeLanguage", "image",
                "projectUrl", "isQuestion")
 COMMENT_FIELDS = ("text", "parentId", "codeSnippet", "codeLanguage")
+TAGS = re.compile(r"<[^>]+>")
+
+
+def post_preview(post):
+    # Content may be formatted HTML; a notification shows plain text only.
+    text = " ".join(TAGS.sub(" ", post.content or "").split())
+    return post.title or text or ("💻 Code" if post.code_snippet else "📷 Photo" if post.image else "New post")
+
+
+def announce_post(post):
+    """Pop a notification on every other member's device that has notifications on, like a chat message."""
+    recipients = db.session.scalars(
+        db.select(PushSubscription.user_id).distinct().join(User, User.id == PushSubscription.user_id)
+        .where(PushSubscription.user_id != g.user.id, User.status == "Active")).all()
+    title = "មានសំណួរថ្មី" if post.is_question else "មានការបង្ហោះថ្មី"
+    send_to_users(recipients, title, f"{g.user.name}: {post_preview(post)}", f"/post/{post.id}")
 
 
 def post_data(post, data):
@@ -80,7 +98,9 @@ def add_post():
     post_data(post, data)
     db.session.add(post)
     db.session.commit()
-    return jsonify(data=serialize(post)), 201
+    result = serialize(post)
+    announce_post(post)
+    return jsonify(data=result), 201
 
 
 @bp.get("/posts/<int:post_id>")

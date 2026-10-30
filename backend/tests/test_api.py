@@ -366,6 +366,14 @@ def test_push_notifications_and_media_messages(client, accounts, monkeypatch):
                        json={"text": "", "attachment": {**photo, "url": "https://evil.example/chat/x.jpg"}}
                        ).status_code == 400
     sent.clear()
+    created = call(client, "POST", "/api/posts", 201, headers=owner["headers"],
+                   data={"content": "<p>Hello <strong>team</strong></p>", "tag": "#General"})
+    assert [endpoint for endpoint, _ in sent] == [device["endpoint"]]
+    payload = json.loads(sent[-1][1])
+    assert payload == {"title": "មានការបង្ហោះថ្មី", "body": "owner: Hello team", "url": f"/post/{created['id']}"}
+    sent.clear()
+    call(client, "POST", "/api/posts", 201, headers=other["headers"], data={"content": "Own post", "tag": "#General"})
+    assert sent == []  # The author's own devices are not notified.
     call(client, "DELETE", "/api/push/subscriptions", headers=other["headers"], data={"endpoint": device["endpoint"]})
     call(client, "POST", f"/api/conversations/{chat['id']}/messages", 201,
          headers=owner["headers"], data={"text": "Nobody is subscribed now"})

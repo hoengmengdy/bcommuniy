@@ -57,7 +57,7 @@ onUnmounted(() => {
 <template>
   <section class="notification-settings glass-panel" aria-labelledby="profile-notifications-title">
     <h2 id="profile-notifications-title">ការជូនដំណឹងសារ</h2>
-    <p>ទទួល notification ពេលមានគេឆាតមក ទោះបិទ app ឬចាក់សោទូរស័ព្ទ។</p>
+    <p>ទទួល notification ពេលមានគេឆាតមក ឬបង្ហោះអ្វីថ្មី ទោះបិទ app ឬចាក់សោទូរស័ព្ទ។</p>
 
     <div v-if="state === 'install'" class="notification-help">
       នៅលើ iPhone៖ បើក website ក្នុង Safari → Share → Add to Home Screen។
