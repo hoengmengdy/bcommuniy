@@ -1,10 +1,19 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { enablePush, turnOffPush, needsHomeScreenInstall, pushEnabled, pushSupported } from '@/services/push'
+import {
+  disableIncomingMessageVoice,
+  enableIncomingMessageVoice,
+  incomingMessageVoiceEnabled,
+  incomingMessageVoiceSupported,
+} from '@/services/incomingMessageVoice'
 
 const state = ref('loading')
 const busy = ref(false)
 const error = ref('')
+const voiceState = ref('loading')
+const voiceBusy = ref(false)
+const voiceError = ref('')
 let disposed = false
 
 async function refresh() {
@@ -39,25 +48,60 @@ async function toggle() {
   }
 }
 
+function refreshVoiceState() {
+  if (disposed) return
+  voiceState.value = incomingMessageVoiceSupported()
+    ? incomingMessageVoiceEnabled() ? 'on' : 'off'
+    : 'unsupported'
+}
+
+async function toggleVoice() {
+  if (voiceBusy.value || voiceState.value === 'unsupported') return
+  voiceBusy.value = true
+  voiceError.value = ''
+  try {
+    if (voiceState.value === 'on') {
+      disableIncomingMessageVoice()
+      voiceState.value = 'off'
+    } else {
+      await enableIncomingMessageVoice()
+      voiceState.value = 'on'
+    }
+  } catch {
+    voiceState.value = 'off'
+    voiceError.value = 'មិនអាចចាក់សាកសំឡេងបានទេ។ សូមពិនិត្យសំឡេងទូរស័ព្ទ ហើយព្យាយាមម្ដងទៀត។'
+  } finally {
+    voiceBusy.value = false
+  }
+}
+
+function voiceWasDisabled() {
+  voiceState.value = 'off'
+  voiceError.value = 'សំឡេងមិនអាចចាក់បាន ដូច្នេះការកំណត់នេះត្រូវបានបិទ។'
+}
+
 function refreshWhenVisible() {
   if (!document.hidden && !busy.value) refresh()
 }
 onMounted(() => {
   refresh()
+  refreshVoiceState()
   document.addEventListener('visibilitychange', refreshWhenVisible)
   window.addEventListener('focus', refreshWhenVisible)
+  window.addEventListener('bcommunity-incoming-voice-disabled', voiceWasDisabled)
 })
 onUnmounted(() => {
   disposed = true
   document.removeEventListener('visibilitychange', refreshWhenVisible)
   window.removeEventListener('focus', refreshWhenVisible)
+  window.removeEventListener('bcommunity-incoming-voice-disabled', voiceWasDisabled)
 })
 </script>
 
 <template>
   <section class="notification-settings glass-panel" aria-labelledby="profile-notifications-title">
     <h2 id="profile-notifications-title">ការជូនដំណឹងសារ</h2>
-    <p>ទទួល notification ពេលមានគេឆាតមក ឬបង្ហោះអ្វីថ្មី ទោះបិទ app ឬចាក់សោទូរស័ព្ទ។</p>
+    <p>បើកការជូនដំណឹងពេលមានគេឆាតមក ឬបង្ហោះអ្វីថ្មី ទោះបិទ app ឬចាក់សោទូរស័ព្ទ។</p>
 
     <div v-if="state === 'install'" class="notification-help">
       នៅលើ iPhone៖ បើក website ក្នុង Safari → Share → Add to Home Screen។
@@ -70,19 +114,35 @@ onUnmounted(() => {
       ការជូនដំណឹងត្រូវបានបិទដោយទូរស័ព្ទ។ សូមអនុញ្ញាត Notifications សម្រាប់ Bcommunity ក្នុង Settings រួចត្រឡប់មកវិញ។
     </p>
     <button v-else class="notification-toggle" type="button" role="switch"
-      :aria-checked="state === 'on'" :disabled="busy || state === 'loading'" @click="toggle">
+      aria-label="ការជូនដំណឹងសារ" :aria-checked="state === 'on'"
+      :disabled="busy || state === 'loading'" @click="toggle">
       <span>{{ busy ? 'កំពុងប្ដូរ…' : state === 'loading' ? 'កំពុងពិនិត្យ…' : state === 'on' ? 'បិទការជូនដំណឹង' : 'បើកការជូនដំណឹង' }}</span>
       <span class="switch-track" :class="{ enabled: state === 'on' }" aria-hidden="true"><span /></span>
     </button>
     <p v-if="state === 'on'" class="notification-status" role="status">បានបើកការជូនដំណឹងលើឧបករណ៍នេះ។</p>
     <p v-if="error" class="notification-error" role="alert">{{ error }}</p>
-    <p class="notification-note">សំឡេង និងការអានសារចេញជាសំឡេង អាស្រ័យលើការកំណត់ និងការគាំទ្ររបស់ទូរស័ព្ទ។</p>
+    <p class="notification-note">សំឡេង notification ពេល app បិទ អាស្រ័យលើការកំណត់របស់ទូរស័ព្ទ។</p>
+
+    <h3 class="voice-title">សំឡេងនិយាយពេល app បើក</h3>
+    <p>ចាក់សំឡេងខ្មែរ «មានគេឆាតមក» ពេល app បើក។ ប៉ះបើកដើម្បីសាកសំឡេងម្តង។</p>
+    <p v-if="voiceState === 'unsupported'" class="notification-help">
+      Browser នេះមិនអាចចាក់ឯកសារសំឡេងខ្មែរបានទេ ដូច្នេះមិនអាចបើកមុខងារនេះបាន។
+    </p>
+    <button v-else class="notification-toggle" type="button" role="switch"
+      aria-label="សំឡេងនិយាយ" :aria-checked="voiceState === 'on'"
+      :disabled="voiceBusy || voiceState === 'loading'" @click="toggleVoice">
+      <span>{{ voiceBusy ? 'កំពុងសាកសំឡេង…' : voiceState === 'loading' ? 'កំពុងពិនិត្យ…' : voiceState === 'on' ? 'បិទសំឡេងនិយាយ' : 'បើកសំឡេងនិយាយ' }}</span>
+      <span class="switch-track" :class="{ enabled: voiceState === 'on' }" aria-hidden="true"><span /></span>
+    </button>
+    <p v-if="voiceState === 'on'" class="notification-status" role="status">បានបើកសំឡេងនិយាយលើឧបករណ៍នេះ។</p>
+    <p v-if="voiceError" class="notification-error" role="alert">{{ voiceError }}</p>
   </section>
 </template>
 
 <style scoped>
 .notification-settings { padding: 1.25rem; margin-bottom: 1.5rem; }
 h2 { margin: 0 0 0.75rem; font-size: 1.1rem; color: var(--ink-strong, #0f172a); }
+h3.voice-title { margin: 1.5rem 0 0.5rem; font-size: 1rem; color: var(--ink-strong, #0f172a); }
 p { color: var(--ink-600, #475569); font-size: 0.88rem; line-height: 1.7; margin: 0.75rem 0; }
 .notification-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; padding: 0.85rem; border: 1px solid var(--tint-strong, #ddd6fe); border-radius: 12px; background: var(--tint, #f5f3ff); color: var(--brand-ink, #5b21b6); font: inherit; cursor: pointer; text-align: left; }
 .notification-toggle:focus-visible { outline: 3px solid #7c3aed; outline-offset: 3px; }

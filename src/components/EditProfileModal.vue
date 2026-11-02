@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
+import { shrinkImage, blobToDataUrl } from '@/utils/images'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -51,19 +52,15 @@ async function choosePhoto(event) {
   previewAvatar.value = props.initialAvatar
   imageError.value = ''
   isReading.value = false
-  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-    imageError.value = 'Choose a JPEG, PNG, WebP or GIF image under 5 MB.'
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 25 * 1024 * 1024) {
+    imageError.value = 'Choose a JPEG, PNG, WebP or GIF image under 25 MB.'
     event.target.value = ''
     return
   }
   isReading.value = true
   try {
-    const value = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result)
-      reader.onerror = () => reject(new Error('Unable to read this photo. Please choose it again.'))
-      reader.readAsDataURL(file)
-    })
+    // The server crops avatars to 256px; shrinking first keeps the request under Vercel's 4.5 MB limit.
+    const value = await blobToDataUrl(await shrinkImage(file, { maxSide: 512 }))
     if (version !== selection) return
     selectedAvatar.value = value
     previewAvatar.value = value

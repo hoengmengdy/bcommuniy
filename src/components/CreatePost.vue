@@ -3,6 +3,11 @@ import { ref, computed, nextTick } from 'vue'
 import { usePostsStore } from '@/stores/posts'
 import { useUiStore } from '@/stores/ui'
 import { useSettingsStore } from '@/stores/settings'
+import { upload } from '@vercel/blob/client'
+import { authHeaders } from '@/services/api'
+import { shrinkImage, blobToDataUrl } from '@/utils/images'
+
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024 // before shrinking
 
 const store = usePostsStore()
 const uiStore = useUiStore()
@@ -27,14 +32,42 @@ function autoGrow() {
   el.style.height = Math.min(el.scrollHeight, 320) + 'px'
 }
 
+// imageUrl is only a local preview; the photo itself is uploaded when the post is sent.
+let imageFile = null
+
+function clearImage() {
+  if (imageUrl.value) URL.revokeObjectURL(imageUrl.value)
+  imageUrl.value = ''
+  imageFile = null
+}
+
 function handleImageUpload(event) {
-  const file = event.target.files[0]
-  if (file && file.type.startsWith('image/')) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      imageUrl.value = e.target.result
-    }
-    reader.readAsDataURL(file)
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/')) return uiStore.addToast(t('create.imageInvalid'), 'error')
+  if (file.size > MAX_IMAGE_BYTES) return uiStore.addToast(t('create.imageTooLarge'), 'error')
+  clearImage()
+  imageFile = file
+  imageUrl.value = URL.createObjectURL(file)
+}
+
+// Photos go straight to Vercel Blob so the post request stays small. Without Blob
+// (e.g. local Flask development) the shrunk photo is embedded in the post instead.
+async function uploadImage(file) {
+  const photo = file.type === 'image/gif' && file.size <= 3 * 1024 * 1024 ? file : await shrinkImage(file)
+  const ext = photo.type === 'image/gif' ? 'gif' : 'jpg'
+  try {
+    const blob = await upload(`posts/photo-${Date.now()}.${ext}`, photo, {
+      access: 'public',
+      handleUploadUrl: '/api/media/upload',
+      headers: authHeaders(),
+      contentType: photo.type,
+    })
+    return blob.url
+  } catch (error) {
+    if (photo.size > 3 * 1024 * 1024) throw error
+    return blobToDataUrl(photo)
   }
 }
 
@@ -42,11 +75,16 @@ async function submitPost() {
   if (!canPost.value) return
   posting.value = true
   try {
-    const created = await store.addPost(content.value, selectedTag.value, codeSnippet.value, codeLanguage.value, false, imageUrl.value, '')
+    let image = ''
+    if (imageFile) {
+      try { image = await uploadImage(imageFile) }
+      catch { return uiStore.addToast(t('create.imageUploadFailed'), 'error') }
+    }
+    const created = await store.addPost(content.value, selectedTag.value, codeSnippet.value, codeLanguage.value, false, image, '')
     if (!created) return
     content.value = ''
     codeSnippet.value = ''
-    imageUrl.value = ''
+    clearImage()
     showCodeInput.value = false
     selectedTag.value = '#General'
     nextTick(autoGrow)
@@ -88,7 +126,7 @@ async function submitPost() {
 
     <div v-if="imageUrl" class="image-preview-section">
       <img :src="imageUrl" alt="Selected image preview" class="image-preview" />
-      <button class="remove-image-btn" @click="imageUrl = ''" :title="t('create.removeImage')" :aria-label="t('create.removeImage')">✕</button>
+      <button class="remove-image-btn" @click="clearImage" :title="t('create.removeImage')" :aria-label="t('create.removeImage')">✕</button>
     </div>
 
     <div class="action-row">

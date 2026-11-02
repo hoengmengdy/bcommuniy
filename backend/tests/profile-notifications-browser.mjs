@@ -52,7 +52,7 @@ async function openProfile({ iphone = false, denied = false } = {}) {
 
 try {
   const { page, requests, errors } = await openProfile()
-  const toggle = page.getByRole('switch')
+  const toggle = page.getByRole('switch', { name: 'ការជូនដំណឹងសារ' })
   await expect(toggle).toHaveAttribute('aria-checked', 'false')
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-checked', 'true')
@@ -71,13 +71,13 @@ try {
 
   const blocked = await openProfile({ denied: true })
   await expect(blocked.page.getByText('ការជូនដំណឹងត្រូវបានបិទដោយទូរស័ព្ទ។', { exact: false })).toBeVisible()
-  await expect(blocked.page.getByRole('switch')).toHaveCount(0)
+  await expect(blocked.page.getByRole('switch', { name: 'ការជូនដំណឹងសារ' })).toHaveCount(0)
   assert.equal(await blocked.page.evaluate(() => window.permissionPrompts), 0)
   await blocked.page.close()
 
   const iphone = await openProfile({ iphone: true })
   await expect(iphone.page.getByText('នៅលើ iPhone៖', { exact: false })).toBeVisible()
-  await expect(iphone.page.getByRole('switch')).toHaveCount(0)
+  await expect(iphone.page.getByRole('switch', { name: 'ការជូនដំណឹងសារ' })).toHaveCount(0)
   assert.deepEqual(iphone.errors, [])
   await iphone.page.close()
   console.log('PASS: own-profile push on/off, server subscription cleanup, mobile layout, public-profile privacy, denied permission and iPhone installation guidance.')

@@ -57,6 +57,9 @@ export const messages = {
     'create.post': 'Post',
     'create.posting': 'Posting…',
     'create.published': 'Post published successfully!',
+    'create.imageInvalid': 'Please choose a photo.',
+    'create.imageTooLarge': 'Photos can be up to 25 MB.',
+    'create.imageUploadFailed': 'The photo could not be uploaded. Please try again.',
 
     'post.like': 'Like',
     'post.unlike': 'Unlike',
@@ -134,6 +137,9 @@ export const messages = {
     'create.post': 'បង្ហោះ',
     'create.posting': 'កំពុងបង្ហោះ…',
     'create.published': 'បានបង្ហោះដោយជោគជ័យ!',
+    'create.imageInvalid': 'សូមជ្រើសរើសរូបភាព។',
+    'create.imageTooLarge': 'រូបភាពអាចមានទំហំរហូតដល់ 25 MB។',
+    'create.imageUploadFailed': 'មិនអាចបង្ហោះរូបភាពបានទេ។ សូមព្យាយាមម្តងទៀត។',
 
     'post.like': 'ចូលចិត្ត',
     'post.unlike': 'ឈប់ចូលចិត្ត',

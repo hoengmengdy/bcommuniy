@@ -1,5 +1,6 @@
 import re
 from flask import Blueprint, g, jsonify, request
+from sqlalchemy.orm import selectinload
 from backend.extensions import db
 from backend.models import Comment, Post, PostLike, PushSubscription, User
 from backend.services.auth import login_required, require_owner
@@ -67,7 +68,9 @@ def serialize(post):
 @bp.get("/questions")
 @bp.get("/reviews")
 def list_posts():
-    query = db.select(Post)
+    # Load authors, likes and comments in a few batched queries instead of several per post.
+    query = db.select(Post).options(selectinload(Post.author), selectinload(Post.likes),
+                                    selectinload(Post.comments).selectinload(Comment.author))
     if request.path.startswith("/api/questions"):
         query = query.where(Post.is_question.is_(True))
     if request.path.startswith("/api/reviews"):

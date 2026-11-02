@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/common' // popular languages only; the full set is ~900 KB
 import 'highlight.js/styles/atom-one-dark.css' // Import a nice dark theme
 
 const props = defineProps({

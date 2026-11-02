@@ -26,6 +26,22 @@ export const usePostsStore = defineStore('posts', () => {
     posts.value = await apiList('/posts')
     return posts.value
   }
+  // The first screen only needs the newest posts; the rest load in the background
+  // so profile pages and admin totals still see every post.
+  const FIRST_PAGE = 20
+  async function fetchFirstPosts() {
+    const first = await api('/posts?page=1&per_page=' + FIRST_PAGE)
+    posts.value = first.data
+    if (first.meta && first.meta.total > first.data.length) {
+      apiAction(async () => {
+        const all = await apiList('/posts')
+        // Keep posts created while the full list was loading.
+        const known = new Set(all.map(post => post.id))
+        posts.value = [...posts.value.filter(post => !known.has(post.id)), ...all]
+      })
+    }
+    return posts.value
+  }
   async function validateSession() {
     if (!hasToken()) {
       currentUser.value = null
@@ -57,7 +73,7 @@ export const usePostsStore = defineStore('posts', () => {
     if (!hasToken()) return false
     if (!initialization) initialization = (async () => {
       if (!currentUser.value && !await validateSession()) return false
-      await apiAction(fetchPosts)
+      await apiAction(fetchFirstPosts)
       return Boolean(currentUser.value)
     })()
     return initialization
@@ -68,7 +84,7 @@ export const usePostsStore = defineStore('posts', () => {
     if (!hasToken()) throw new Error('Your session expired. Please sign in again.')
     currentUser.value = response.data.user
     globalThis.dispatchEvent?.(new Event('bcommunity-session-changed'))
-    await apiAction(fetchPosts)
+    await apiAction(fetchFirstPosts)
     return currentUser.value
   }
   function logout() {

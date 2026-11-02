@@ -1,5 +1,6 @@
 import re
 from flask import Blueprint, g, jsonify
+from sqlalchemy.orm import selectinload
 from backend.extensions import db
 from backend.models import (Conversation, ConversationMember, Message, MessageReaction, PushSubscription, User,
                             now)
@@ -28,7 +29,11 @@ def conversations():
     # Newest activity first, like Messenger: a chat with a new message jumps to the top.
     latest = db.select(db.func.max(Message.created_at)).where(
         Message.conversation_id == Conversation.id).correlate(Conversation).scalar_subquery()
-    query = db.select(Conversation).join(ConversationMember).where(
+    # Batch-load members, messages and replies; this endpoint is polled every few seconds.
+    query = db.select(Conversation).options(
+        selectinload(Conversation.members).selectinload(ConversationMember.user),
+        selectinload(Conversation.messages).selectinload(Message.reply_to).selectinload(Message.sender),
+    ).join(ConversationMember).where(
         ConversationMember.user_id == g.user.id).order_by(
         db.func.coalesce(latest, Conversation.created_at).desc(), Conversation.id.desc())
     rows, meta = page(query)

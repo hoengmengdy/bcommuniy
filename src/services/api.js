@@ -76,7 +76,14 @@ export async function api(endpoint, { method = 'GET', body, ...options } = {}) {
   if (response.status === 401 && requestToken && requestVersion === sessionVersion) expireSession()
   let result
   try { result = await response.json() }
-  catch { throw new Error('The API returned an invalid response. Check that Flask is running.') }
+  catch {
+    // Proxies and the hosting platform answer some failures with plain text or HTML.
+    const error = new Error(response.status === 413 ? 'This upload is too large. Please choose a smaller file.'
+      : response.status >= 500 ? 'The server is having trouble. Please try again in a moment.'
+      : 'The API returned an invalid response. Check that Flask is running.')
+    error.status = response.status
+    throw error
+  }
   if (!response.ok) {
     const error = new Error(result.error?.message || 'API request failed.')
     error.status = response.status

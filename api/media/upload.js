@@ -1,4 +1,4 @@
-// Issues short-lived Vercel Blob client-upload tokens for chat photos, videos and voice messages.
+// Issues short-lived Vercel Blob client-upload tokens for post photos and chat photos, videos and voice messages.
 // Files go straight from the browser to Blob storage, avoiding the 4.5 MB function body limit.
 import { handleUpload } from '@vercel/blob/client'
 
@@ -28,6 +28,10 @@ export async function POST(request) {
           headers: { Authorization: request.headers.get('authorization') || '' },
         })
         if (!me.ok) throw new Error('Authentication required.')
+        // Post photos (posts/*) are images only; chat also accepts video and voice.
+        if (/^posts\/[\w.-]{1,120}$/.test(pathname)) {
+          return { allowedContentTypes: IMAGE_TYPES, maximumSizeInBytes: MAX_IMAGE_BYTES, addRandomSuffix: true }
+        }
         if (!/^chat\/[\w.-]{1,120}$/.test(pathname)) throw new Error('Invalid file name.')
         // Voice notes are named chat/voice-*, since .webm/.mp4 alone can't tell audio from video.
         const isAudio = pathname.startsWith('chat/voice-')
