@@ -93,36 +93,60 @@ export const useCallStore = defineStore('call', () => {
     ended: endReason.value || t('ended'),
   }[phase.value] || ''))
 
-  // ---------- ringing sounds (Web Audio, no files to download) ----------
+  // ---------- ringing sounds ----------
+  // Incoming: the spoken Khmer "មានគេហៅមក" (same voice as the chat alert) followed by a ring,
+  // repeating until answered. Outgoing: a soft ringback tone. Beeps are made with Web Audio.
+  const callVoice = typeof Audio !== 'undefined' ? new Audio('/audio/incoming-call-km.mp3') : null
+  if (callVoice) callVoice.preload = 'auto'
+
   function playTone(pattern) {
     stopTone()
+    const incoming = pattern === 'incoming'
+    let ctx = null
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      const beep = () => {
-        const gain = ctx.createGain()
-        gain.gain.value = pattern === 'incoming' ? 0.18 : 0.08
-        gain.connect(ctx.destination)
-        for (const [freq, start] of pattern === 'incoming' ? [[880, 0], [660, 0.25], [880, 0.5]] : [[440, 0], [480, 0]]) {
-          const osc = ctx.createOscillator()
-          osc.frequency.value = freq
-          osc.connect(gain)
-          osc.start(ctx.currentTime + start)
-          osc.stop(ctx.currentTime + start + (pattern === 'incoming' ? 0.2 : 1.2))
-        }
-        if (pattern === 'incoming') navigator.vibrate?.([300, 150, 300])
-      }
-      beep()
-      const timer = setInterval(beep, pattern === 'incoming' ? 2000 : 4000)
-      tone = { ctx, timer }
+      ctx = new (window.AudioContext || window.webkitAudioContext)()
+      // Browsers start audio "suspended" until the page has been used; ask to wake it.
+      ctx.resume?.().catch(() => {})
     } catch {
-      // Autoplay blocked or no Web Audio: the call screen still shows.
+      // No Web Audio: the voice clip and the call screen still work.
     }
+    const beep = () => {
+      if (!ctx) return
+      const gain = ctx.createGain()
+      gain.gain.value = incoming ? 0.25 : 0.08
+      gain.connect(ctx.destination)
+      const notes = incoming ? [[880, 0], [660, 0.25], [880, 0.5], [660, 0.75]] : [[440, 0], [480, 0]]
+      for (const [freq, start] of notes) {
+        const osc = ctx.createOscillator()
+        osc.frequency.value = freq
+        osc.connect(gain)
+        osc.start(ctx.currentTime + start)
+        osc.stop(ctx.currentTime + start + (incoming ? 0.2 : 1.2))
+      }
+    }
+    const ring = () => {
+      if (incoming) {
+        navigator.vibrate?.([400, 200, 400, 200, 400])
+        if (callVoice) {
+          callVoice.currentTime = 0
+          callVoice.play().catch(() => {}) // blocked until the page has been tapped once
+        }
+        tone && (tone.beepTimer = setTimeout(beep, 2100)) // ring right after the voice
+      } else {
+        beep()
+      }
+    }
+    tone = { ctx, timer: null, beepTimer: null }
+    ring()
+    tone.timer = setInterval(ring, 4000)
   }
   function stopTone() {
     if (!tone) return
     clearInterval(tone.timer)
-    tone.ctx.close().catch(() => {})
+    clearTimeout(tone.beepTimer)
+    tone.ctx?.close().catch(() => {})
     tone = null
+    callVoice?.pause()
     navigator.vibrate?.(0)
   }
 
@@ -194,7 +218,8 @@ export const useCallStore = defineStore('call', () => {
   }
 
   async function pollIncoming() {
-    if (phase.value !== 'idle' || document.hidden) return
+    // Keep checking while the tab is in the background, so a call rings there too.
+    if (phase.value !== 'idle') return
     try {
       const { data } = await api('/calls/incoming')
       if (!data || phase.value !== 'idle' || data.id === ignoredCallId) return

@@ -11,12 +11,15 @@ self.addEventListener('push', event => {
   } catch {
     data = { body: event.data?.text() }
   }
+  const isCall = data.kind === 'call'
   event.waitUntil(self.registration.showNotification(data.title || 'Bcommunity', {
     body: data.body || 'New message',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    tag: data.url || 'bcommunity-message',
+    tag: isCall ? 'bcommunity-call' : data.url || 'bcommunity-message',
     renotify: true,
+    // An incoming call stays on screen until tapped, with a long phone-like vibration.
+    ...(isCall ? { requireInteraction: true, vibrate: [500, 250, 500, 250, 500, 250, 500] } : {}),
     // Ask the OS for its notification sound, including when the app is closed.
     // Spoken announcements are controlled by the user's phone settings.
     silent: false,

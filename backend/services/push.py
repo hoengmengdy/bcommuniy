@@ -35,18 +35,21 @@ def public_key():
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
 
-def send_to_users(user_ids, title, body, url):
-    """Best effort: a failed push never breaks the request; expired subscriptions are removed."""
+def send_to_users(user_ids, title, body, url, kind="message"):
+    """Best effort: a failed push never breaks the request; expired subscriptions are removed.
+    kind="call" makes the service worker keep the alert on screen and vibrate like a phone call."""
     keys = vapid()
     if not keys or not user_ids:
         return
-    payload = json.dumps({"title": title, "body": body[:180], "url": url})
+    payload = json.dumps({"title": title, "body": body[:180], "url": url, **({"kind": kind} if kind != "message" else {})})
     subscriptions = db.session.scalars(
         db.select(PushSubscription).where(PushSubscription.user_id.in_(user_ids))).all()
     for subscription in subscriptions:
         try:
             webpush(subscription.info(), payload, vapid_private_key=keys,
-                    vapid_claims={"sub": request.host_url.rstrip("/")}, ttl=86400, timeout=5)
+                    vapid_claims={"sub": request.host_url.rstrip("/")}, timeout=5,
+                    # A call alert is useless a minute later; deliver it right away or drop it.
+                    ttl=60 if kind == "call" else 86400, headers={"Urgency": "high" if kind == "call" else "normal"})
         except WebPushException as error:
             if error.response is not None and error.response.status_code in (404, 410):
                 db.session.delete(subscription)

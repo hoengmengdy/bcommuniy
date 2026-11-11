@@ -88,7 +88,7 @@ def start_call():
     db.session.commit()
     result = call.to_dict(g.user.id)
     send_to_users([callee_id], "📞 មានគេហៅមក",
-                  f"{g.user.name}: ការហៅ{LABEL[kind]}", f"/messages?c={conversation.id}")
+                  f"{g.user.name}: ការហៅ{LABEL[kind]}", f"/messages?c={conversation.id}", kind="call")
     return jsonify(data=result), 201
 
 
