@@ -100,7 +100,11 @@ document.addEventListener('visibilitychange', checkForUpdate)
       <Navbar />
     </div>
     <main class="main-content">
-      <RouterView v-if="canViewPage" />
+      <RouterView v-if="canViewPage" v-slot="{ Component, route: viewRoute }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" :key="viewRoute.path" />
+        </Transition>
+      </RouterView>
     </main>
     <ToastNotification />
   </div>

@@ -1,0 +1,154 @@
+/*
+ * Site-wide motion: page transitions, cards that slide in as they scroll into view,
+ * hover lift, button press, and Bootstrap component polish.
+ * Everything here switches off for people who ask their device for reduced motion.
+ */
+
+:root {
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------- Page transition (App.vue wraps RouterView in <Transition name="page">) ---------- */
+.page-enter-active {
+  transition: opacity 0.35s var(--ease-out-soft), transform 0.35s var(--ease-out-soft);
+}
+.page-leave-active {
+  transition: opacity 0.15s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.page-leave-to {
+  opacity: 0;
+}
+
+/* ---------- Scroll reveal (classes added by utils/reveal.js) ---------- */
+/* Repeated class = higher specificity, so this beats each page's own scoped card transition. */
+.reveal.reveal.reveal {
+  transition:
+    opacity 0.55s var(--ease-out-soft),
+    transform 0.45s var(--ease-out-soft),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal:not(.is-visible) {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+}
+
+/* ---------- Card hover lift (mouse / trackpad only, not touch) ---------- */
+@media (hover: hover) {
+  .post-card,
+  .question-card,
+  .review-card,
+  .mentor-card,
+  .category-card,
+  .stat-card,
+  .mission-card {
+    transition: transform 0.25s var(--ease-out-soft), box-shadow 0.25s ease;
+  }
+  .post-card:hover,
+  .question-card:hover,
+  .review-card:hover,
+  .mentor-card:hover,
+  .category-card:hover,
+  .stat-card:hover,
+  .mission-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px -12px rgb(124 58 237 / 0.35), var(--card-hover-shadow);
+  }
+}
+
+/* ---------- Buttons: soft press on every button ---------- */
+button:not(:disabled),
+.btn:not(:disabled) {
+  transition-property: transform, box-shadow, background-color, color, filter, opacity, border-color;
+}
+button:not(:disabled):active,
+.btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+/* Shine sweep across primary buttons on hover */
+.btn-primary {
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .btn-primary:hover::after {
+    transition: transform 0.7s var(--ease-out-soft);
+    transform: translateX(120%);
+  }
+}
+
+/* ---------- Brand logo: gentle float + glow on hover ---------- */
+.brand-logo {
+  transition: transform 0.4s var(--ease-spring), filter 0.3s ease;
+}
+.brand:hover .brand-logo {
+  transform: rotate(-8deg) scale(1.08);
+  filter: drop-shadow(0 4px 10px rgb(124 58 237 / 0.45));
+}
+
+/* ---------- Notification badge pop ---------- */
+.badge {
+  animation: badgePop 0.4s var(--ease-spring);
+}
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- Bootstrap components: smoother built-in motion ---------- */
+.dropdown-menu.show {
+  animation: bsDropIn 0.22s var(--ease-out-soft);
+  transform-origin: top;
+}
+@keyframes bsDropIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.modal.fade .modal-dialog {
+  transition: transform 0.35s var(--ease-spring), opacity 0.25s ease;
+  transform: translateY(24px) scale(0.96);
+  opacity: 0;
+}
+.modal.show .modal-dialog {
+  transform: none;
+  opacity: 1;
+}
+.toast.showing,
+.toast.show {
+  animation: bsToastIn 0.35s var(--ease-spring);
+}
+@keyframes bsToastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Respect "reduce motion" ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal:not(.is-visible) {
+    opacity: 1;
+    transform: none;
+  }
+}
