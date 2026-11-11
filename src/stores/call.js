@@ -99,17 +99,42 @@ export const useCallStore = defineStore('call', () => {
   const callVoice = typeof Audio !== 'undefined' ? new Audio('/audio/incoming-call-km.mp3') : null
   if (callVoice) callVoice.preload = 'auto'
 
+  // Browsers only allow a page to make sound after the person has tapped or typed on it.
+  // So we keep ONE audio context and ONE voice player for the whole visit, and "unlock" both
+  // on the first tap anywhere. Later, when a call arrives with no tap, they are allowed to play.
+  let audioCtx = null
+  function sharedAudioContext() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)() } catch { audioCtx = null }
+    }
+    return audioCtx
+  }
+  let voiceUnlocked = false
+  function unlockAudio() {
+    const ctx = sharedAudioContext()
+    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {})
+    if (callVoice && !voiceUnlocked && phase.value === 'idle') {
+      callVoice.muted = true
+      callVoice.play().then(() => {
+        callVoice.pause()
+        callVoice.currentTime = 0
+        callVoice.muted = false
+        voiceUnlocked = true
+      }).catch(() => { callVoice.muted = false })
+    }
+    if (voiceUnlocked && ctx?.state === 'running') {
+      for (const type of ['pointerdown', 'keydown', 'touchend']) document.removeEventListener(type, unlockAudio, true)
+    }
+  }
+  if (typeof document !== 'undefined') {
+    for (const type of ['pointerdown', 'keydown', 'touchend']) document.addEventListener(type, unlockAudio, true)
+  }
+
   function playTone(pattern) {
     stopTone()
     const incoming = pattern === 'incoming'
-    let ctx = null
-    try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)()
-      // Browsers start audio "suspended" until the page has been used; ask to wake it.
-      ctx.resume?.().catch(() => {})
-    } catch {
-      // No Web Audio: the voice clip and the call screen still work.
-    }
+    const ctx = sharedAudioContext()
+    ctx?.resume?.().catch(() => {})
     const beep = () => {
       if (!ctx) return
       const gain = ctx.createGain()
@@ -136,7 +161,7 @@ export const useCallStore = defineStore('call', () => {
         beep()
       }
     }
-    tone = { ctx, timer: null, beepTimer: null }
+    tone = { timer: null, beepTimer: null }
     ring()
     tone.timer = setInterval(ring, 4000)
   }
@@ -144,7 +169,6 @@ export const useCallStore = defineStore('call', () => {
     if (!tone) return
     clearInterval(tone.timer)
     clearTimeout(tone.beepTimer)
-    tone.ctx?.close().catch(() => {})
     tone = null
     callVoice?.pause()
     navigator.vibrate?.(0)
@@ -234,9 +258,25 @@ export const useCallStore = defineStore('call', () => {
     }
   }
 
+  // A tab in the background only gets its timers about once a minute, which is longer than
+  // a call rings. The call's push notification wakes the service worker, which tells every
+  // open tab to check right away (public/sw.js), and coming back to the tab checks too.
+  let wakeListenersAdded = false
+  function addWakeListeners() {
+    if (wakeListenersAdded) return
+    wakeListenersAdded = true
+    navigator.serviceWorker?.addEventListener('message', event => {
+      if (event.data?.type === 'incoming-call' && incomingTimer) pollIncoming()
+    })
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && incomingTimer) pollIncoming()
+    })
+  }
+
   function watchIncoming() {
     clearInterval(incomingTimer)
     incomingTimer = setInterval(pollIncoming, INCOMING_POLL_MS)
+    addWakeListeners()
     pollIncoming()
   }
   function stopWatchingIncoming() {

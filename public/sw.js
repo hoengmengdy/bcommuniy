@@ -12,6 +12,11 @@ self.addEventListener('push', event => {
     data = { body: event.data?.text() }
   }
   const isCall = data.kind === 'call'
+  // An open tab (even in the background) starts ringing straight away.
+  if (isCall) {
+    event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(windows => windows.forEach(client => client.postMessage({ type: 'incoming-call' }))))
+  }
   event.waitUntil(self.registration.showNotification(data.title || 'Bcommunity', {
     body: data.body || 'New message',
     icon: '/icon-192.png',
