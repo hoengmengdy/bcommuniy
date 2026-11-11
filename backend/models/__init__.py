@@ -302,3 +302,37 @@ class PushSubscription(db.Model):
 
     def info(self):
         return {"endpoint": self.endpoint, "keys": {"p256dh": self.p256dh, "auth": self.auth}}
+
+
+class Call(db.Model):
+    """A one-to-one voice or video call. The server only relays the WebRTC offer/answer;
+    audio and video flow directly between the two browsers."""
+    __tablename__ = "calls"
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey("conversations.id", ondelete="CASCADE"),
+                                nullable=False, index=True)
+    caller_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    callee_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind = db.Column(db.String(10), nullable=False, default="audio")      # audio | video
+    status = db.Column(db.String(12), nullable=False, default="ringing")  # ringing | active | ended | declined | missed
+    offer = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now)
+    answered_at = db.Column(db.DateTime, nullable=True)
+    ended_at = db.Column(db.DateTime, nullable=True)
+    caller = db.relationship("User", foreign_keys=[caller_id])
+    callee = db.relationship("User", foreign_keys=[callee_id])
+
+    def to_dict(self, viewer_id):
+        def person(user):
+            info = user.to_dict()
+            return {"id": user.id, "name": user.name, "avatar": info["avatar"]}
+        data = {"id": self.id, "conversationId": self.conversation_id, "kind": self.kind, "status": self.status,
+                "caller": person(self.caller), "callee": person(self.callee),
+                "createdAt": iso(self.created_at), "answeredAt": iso(self.answered_at), "endedAt": iso(self.ended_at)}
+        # Each side only receives the description the other side sent.
+        if viewer_id == self.callee_id:
+            data["offer"] = self.offer
+        if viewer_id == self.caller_id:
+            data["answer"] = self.answer
+        return data

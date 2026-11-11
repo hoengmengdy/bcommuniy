@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from '@/components/Navbar.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import CallOverlay from '@/components/CallOverlay.vue'
+import { useCallStore } from '@/stores/call'
 import { usePostsStore } from '@/stores/posts'
 import { useChatStore } from '@/stores/chat'
 import { useUiStore } from '@/stores/ui'
@@ -62,9 +64,14 @@ function refreshWhenVisible() {
   if (!document.hidden) refreshIncomingMessages()
 }
 
+const callStore = useCallStore()
+
 watch(() => store.currentUser?.id ?? null, userId => {
   knownMessages = null
   if (userId) refreshIncomingMessages()
+  // Listen for incoming calls on every page while signed in.
+  if (userId) callStore.watchIncoming()
+  else callStore.stopWatchingIncoming()
 }, { immediate: true })
 
 onMounted(() => {
@@ -83,7 +90,8 @@ onUnmounted(() => {
 // Installed phone apps keep the old page in memory for days; reload when a new version is deployed.
 const currentBundle = document.querySelector('script[type="module"][src*="/assets/index-"]')?.getAttribute('src')
 async function checkForUpdate() {
-  if (document.visibilityState !== 'visible' || !currentBundle) return
+  // Never reload in the middle of a call.
+  if (document.visibilityState !== 'visible' || !currentBundle || callStore.inCall) return
   try {
     const html = await (await fetch('/', { cache: 'no-store' })).text()
     if (html.includes('/assets/index-') && !html.includes(currentBundle)) location.reload()
@@ -107,6 +115,7 @@ document.addEventListener('visibilitychange', checkForUpdate)
       </RouterView>
     </main>
     <ToastNotification />
+    <CallOverlay v-if="store.currentUser" />
   </div>
 </template>
 

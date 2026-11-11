@@ -166,6 +166,58 @@ def test_catalog(client, accounts, resource, data):
     call(client, "DELETE", path, headers=actor)
 
 
+def test_voice_and_video_calls(client, app, accounts):
+    from datetime import timedelta
+    from backend.models import Call
+    owner, other, outsider = [accounts[key] for key in ("owner", "other", "outsider")]
+    cid = call(client, "POST", "/api/conversations", 201, headers=owner["headers"],
+               data={"participantId": other["id"]})["id"]
+    offer = "v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\n"
+    # Nobody is calling yet.
+    assert call(client, "GET", "/api/calls/incoming", headers=other["headers"]) is None
+    started = call(client, "POST", "/api/calls", 201, headers=owner["headers"],
+                   data={"conversationId": cid, "kind": "video", "offer": offer})
+    assert started["status"] == "ringing" and "offer" not in started
+    # Outsiders cannot start or see calls in someone else's chat.
+    assert client.post("/api/calls", headers=outsider["headers"],
+                       json={"conversationId": cid, "kind": "audio", "offer": offer}).status_code == 403
+    assert client.get(f"/api/calls/{started['id']}", headers=outsider["headers"]).status_code == 403
+    assert client.post("/api/calls", headers=owner["headers"],
+                       json={"conversationId": cid, "kind": "fax", "offer": offer}).status_code == 400
+    ringing = call(client, "GET", "/api/calls/incoming", headers=other["headers"])
+    assert ringing["id"] == started["id"] and ringing["offer"] == offer and ringing["caller"]["id"] == owner["id"]
+    # A member whose phone is already ringing cannot get a second call.
+    second = call(client, "POST", "/api/conversations", 201, headers=outsider["headers"],
+                  data={"participantId": other["id"]})["id"]
+    assert client.post("/api/calls", headers=outsider["headers"],
+                       json={"conversationId": second, "kind": "audio", "offer": offer}).status_code == 409
+    # Only the callee may answer.
+    assert client.post(f"/api/calls/{started['id']}/answer", headers=owner["headers"],
+                       json={"answer": "v=0 x"}).status_code == 403
+    answered = call(client, "POST", f"/api/calls/{started['id']}/answer", headers=other["headers"],
+                    data={"answer": "v=0 answer"})
+    assert answered["status"] == "active"
+    seen = call(client, "GET", f"/api/calls/{started['id']}", headers=owner["headers"])
+    assert seen["answer"] == "v=0 answer" and "offer" not in seen
+    ended = call(client, "POST", f"/api/calls/{started['id']}/end", headers=other["headers"])
+    assert ended["status"] == "ended"
+    messages = call(client, "GET", f"/api/conversations/{cid}/messages", headers=owner["headers"])
+    assert any(m["text"].startswith("🎥") for m in messages)
+    # Declining, and a call nobody answers turns into a missed call.
+    declined = call(client, "POST", "/api/calls", 201, headers=owner["headers"],
+                    data={"conversationId": cid, "kind": "audio", "offer": offer})
+    assert call(client, "POST", f"/api/calls/{declined['id']}/end", headers=other["headers"])["status"] == "declined"
+    late = call(client, "POST", "/api/calls", 201, headers=owner["headers"],
+                data={"conversationId": cid, "kind": "audio", "offer": offer})
+    with app.app_context():
+        row = db.session.get(Call, late["id"])
+        row.created_at -= timedelta(minutes=5)
+        db.session.commit()
+    assert call(client, "GET", "/api/calls/incoming", headers=other["headers"]) is None
+    assert client.post(f"/api/calls/{late['id']}/answer", headers=other["headers"],
+                       json={"answer": "v=0 x"}).status_code == 409
+
+
 def test_tasks(client, accounts):
     owner, other, outsider = [accounts[key] for key in ("owner", "other", "outsider")]
     task = call(client, "POST", "/api/tasks", 201, headers=owner["headers"],

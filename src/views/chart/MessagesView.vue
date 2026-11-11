@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watchEffect } from 'vu
 import { usePostsStore } from '@/stores/posts'
 import { useChatStore } from '@/stores/chat'
 import { useUiStore } from '@/stores/ui'
+import { useCallStore } from '@/stores/call'
 import { upload } from '@vercel/blob/client'
 import { authHeaders } from '@/services/api'
 import { chatTime } from '@/utils/time'
@@ -11,6 +12,7 @@ import { enablePush, needsHomeScreenInstall, pushEnabled, pushSupported } from '
 
 const store = useChatStore()
 const postStore = usePostsStore()
+const callStore = useCallStore()
 const selectedMember = ref('')
 const availableMembers = computed(() => store.members.filter(member => member.id !== postStore.currentUser?.id))
 async function startChat() {
@@ -435,6 +437,14 @@ onUnmounted(() => {
             </RouterLink>
           </div>
           <div class="thread-actions">
+            <button class="call-btn" title="Voice call" aria-label="Voice call" :disabled="callStore.inCall"
+                    @click="callStore.startCall(store.activeChat, 'audio')">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2z"/></svg>
+            </button>
+            <button class="call-btn" title="Video call" aria-label="Video call" :disabled="callStore.inCall"
+                    @click="callStore.startCall(store.activeChat, 'video')">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+            </button>
             <button class="action-btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                 <circle cx="12" cy="12" r="1"></circle>
@@ -992,6 +1002,23 @@ onUnmounted(() => {
 }
 
 .action-btn:hover { background: var(--line, #e2e8f0); }
+
+.thread-actions { display: flex; align-items: center; gap: 0.35rem; }
+.call-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--brand, #7c3aed);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+.call-btn:hover:not(:disabled) { background: var(--tint, #ede9fe); }
+.call-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+html[data-theme="dark"] .call-btn { color: var(--brand-ink, #c4b5fd); }
 
 /* ─── Messages ─── */
 .thread-messages {
