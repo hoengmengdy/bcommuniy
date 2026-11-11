@@ -1,3 +1,6 @@
+// Bootstrap first, so the app's own styles (colors, dark mode, layout) still win where they are set.
+import 'bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import './assets/main.css'
 
 import { createApp } from 'vue'

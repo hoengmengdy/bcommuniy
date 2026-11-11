@@ -26,6 +26,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   watch(theme, value => {
     root.dataset.theme = value
+    root.dataset.bsTheme = value // Bootstrap's dark mode follows the app's theme switch
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', value === 'dark' ? '#11131c' : '#6d28d9')
     save('bcommunity-theme', value)
   }, { immediate: true })
