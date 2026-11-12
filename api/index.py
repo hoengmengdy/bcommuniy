@@ -32,6 +32,7 @@ from backend.config import BASE_DIR  # noqa: E402
 from backend.extensions import db  # noqa: E402
 from backend.models import User  # noqa: E402
 from backend.services.auth import create_user  # noqa: E402
+from backend.services.demo import ensure_demo_account  # noqa: E402
 
 app = create_app()
 
@@ -49,6 +50,13 @@ def prepare_database():
         except Exception:
             app.logger.exception("Migration on cold start failed; continuing")
             return
+        try:
+            # The login page is pre-filled with this shared member account.
+            ensure_demo_account()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Demo account bootstrap failed")
         address, secret = os.environ.get("ADMIN_EMAIL"), os.environ.get("ADMIN_PASSWORD")
         if not (address and secret):
             return
