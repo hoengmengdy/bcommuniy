@@ -60,7 +60,11 @@ const router = createRouter({
           path: 'users',
           name: 'admin-users',
           component: () => import('../views/admin/UsersView.vue')
-        }
+        },
+        { path: 'posts', name: 'admin-posts', component: () => import('../views/admin/PostsView.vue') },
+        { path: 'comments', name: 'admin-comments', component: () => import('../views/admin/CommentsView.vue') },
+        { path: 'content', name: 'admin-content', component: () => import('../views/admin/ContentView.vue') },
+        { path: 'broadcast', name: 'admin-broadcast', component: () => import('../views/admin/BroadcastView.vue') },
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },

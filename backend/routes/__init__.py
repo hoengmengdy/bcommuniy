@@ -4,8 +4,9 @@ from backend.routes.posts import bp as posts
 from backend.routes.chat import bp as chat
 from backend.routes.resources import bp as resources
 from backend.routes.calls import bp as calls
+from backend.routes.admin import bp as admin
 
 
 def register_routes(app):
-    for blueprint in (auth, users, posts, chat, resources, calls):
+    for blueprint in (auth, users, posts, chat, resources, calls, admin):
         app.register_blueprint(blueprint, url_prefix="/api")

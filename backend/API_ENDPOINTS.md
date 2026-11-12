@@ -76,3 +76,17 @@ Every endpoint below requires a valid active session except POST /api/auth/login
 | PUT | /api/reviews/<int:post_id> | posts.edit_post |
 | PUT | /api/tasks/<int:task_id> | resources.change_task |
 | PUT | /api/users/<int:user_id> | users.edit_user |
+
+## Admin tools (administrator only)
+
+| Method | Path | Body | Purpose |
+|---|---|---|---|
+| GET | `/api/admin/stats?days=14` | – | Totals, daily activity (signups/posts/comments/messages), top tags, top contributors, newest users |
+| POST | `/api/admin/users/<id>/password` | `{password}` | Set a new password and sign the user out everywhere |
+| POST | `/api/admin/users/<id>/logout` | – | Revoke all of a user's sessions |
+| PUT | `/api/admin/users/<id>/reputation` | `{reputation}` | Set reputation points |
+| POST | `/api/admin/users/bulk` | `{ids, action}` | `activate`, `deactivate`, `promote`, `demote`, `logout`, `delete` (last admin is protected) |
+| GET | `/api/admin/comments?q=` | – | All comments, newest first, with `postTitle` |
+| POST | `/api/admin/posts/bulk-delete` | `{ids}` | Delete many posts |
+| POST | `/api/admin/posts/<id>/solved` | – | Toggle a question's solved state |
+| POST | `/api/admin/broadcast` | `{message, push?}` | Notify every active member (optionally Web Push) |

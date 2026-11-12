@@ -1,0 +1,108 @@
+/* Shared building blocks for every admin screen (imported once by AdminLayout). */
+.adm-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.adm-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.adm-header h1 { font-size: 1.8rem; margin: 0; }
+.adm-header p { margin: 0.2rem 0 0; }
+.adm-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+.adm-toolbar {
+  display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+  padding: 0.9rem 1rem;
+}
+.adm-toolbar .input-field { width: auto; min-width: 0; padding: 0.55rem 0.8rem; }
+.adm-toolbar .adm-search { flex: 1 1 220px; }
+.adm-count { font-size: 0.85rem; color: var(--text-secondary); margin-left: auto; }
+
+.adm-bulkbar {
+  display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
+  padding: 0.7rem 1rem; border-radius: var(--radius-md);
+  background: var(--accent-glow); border: 1px solid rgba(79, 70, 229, 0.25);
+  font-weight: 600; font-size: 0.9rem;
+}
+
+.adm-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.45rem 0.85rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border); background: var(--card-bg);
+  color: var(--text-primary); font-weight: 600; font-size: 0.85rem; cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.adm-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+.adm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.adm-btn.danger { color: var(--red-ink, #dc2626); }
+.adm-btn.danger:hover { border-color: #dc2626; background: rgba(239, 68, 68, 0.08); }
+.adm-btn.primary { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+.adm-btn.primary:hover { background: var(--accent-hover); color: #fff; }
+.adm-btn svg { width: 16px; height: 16px; }
+
+.adm-icon-btn {
+  background: transparent; border: none; cursor: pointer; padding: 0.4rem; border-radius: 8px;
+  color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center;
+}
+.adm-icon-btn:hover { background: var(--accent-glow); color: var(--accent-color); }
+.adm-icon-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.adm-icon-btn svg { width: 17px; height: 17px; }
+
+.adm-table-wrap { overflow-x: auto; padding: 0.5rem; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.adm-table th {
+  text-align: left; padding: 0.75rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); border-bottom: 1px solid var(--card-border); white-space: nowrap;
+}
+.adm-table th.sortable { cursor: pointer; user-select: none; }
+.adm-table th.sortable:hover { color: var(--accent-color); }
+.adm-table td { padding: 0.7rem 0.75rem; border-bottom: 1px solid var(--card-border); vertical-align: middle; }
+.adm-table tr:hover td { background: rgb(var(--surface-rgb, 255 255 255) / 0.5); }
+.adm-table tr.selected td { background: var(--accent-glow); }
+.adm-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.adm-table .nowrap { white-space: nowrap; }
+.adm-cell-actions { display: flex; gap: 0.1rem; justify-content: flex-end; }
+
+.adm-user { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+.adm-user img { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-3, #f1f5f9); flex-shrink: 0; }
+.adm-user strong { display: block; }
+.adm-user small { color: var(--text-secondary); }
+.adm-clip { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.adm-badge {
+  display: inline-block; padding: 0.15rem 0.6rem; border-radius: 100px; font-size: 0.75rem; font-weight: 700;
+  background: rgba(100, 116, 139, 0.12); color: var(--text-secondary); white-space: nowrap;
+}
+.adm-badge.indigo { background: rgba(99, 102, 241, 0.12); color: var(--indigo-ink, #4f46e5); }
+.adm-badge.green { background: rgba(16, 185, 129, 0.12); color: var(--green-ink, #059669); }
+.adm-badge.amber { background: rgba(245, 158, 11, 0.14); color: var(--amber-ink, #b45309); }
+.adm-badge.red { background: rgba(239, 68, 68, 0.12); color: var(--red-ink, #dc2626); }
+
+.adm-empty { padding: 2.5rem 1rem; text-align: center; color: var(--text-secondary); }
+
+.adm-tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.adm-tab {
+  padding: 0.5rem 1rem; border-radius: 100px; border: 1px solid var(--card-border);
+  background: transparent; color: var(--text-secondary); font-weight: 600; cursor: pointer;
+}
+.adm-tab.active { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+
+/* Modal */
+.adm-overlay {
+  position: fixed; inset: 0; z-index: 1050; background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.adm-modal {
+  width: 100%; max-width: 560px; max-height: calc(100vh - 2rem); overflow-y: auto;
+  padding: 1.5rem; background: var(--card-bg); border-radius: var(--radius-lg);
+}
+.adm-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+.adm-modal-head h2 { font-size: 1.3rem; margin: 0; }
+.adm-form { display: flex; flex-direction: column; gap: 1rem; }
+.adm-form label { display: flex; flex-direction: column; gap: 0.35rem; font-weight: 600; font-size: 0.88rem; }
+.adm-form .hint { font-weight: 400; font-size: 0.8rem; color: var(--text-secondary); }
+.adm-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.adm-form-foot { display: flex; justify-content: flex-end; gap: 0.6rem; padding-top: 1rem; border-top: 1px solid var(--card-border); }
+.adm-check { flex-direction: row !important; align-items: center; gap: 0.5rem !important; font-weight: 500 !important; }
+
+@media (max-width: 640px) {
+  .adm-header h1 { font-size: 1.5rem; }
+  .adm-form-row { grid-template-columns: 1fr; }
+  .adm-clip { max-width: 180px; }
+  .adm-count { margin-left: 0; width: 100%; }
+}
