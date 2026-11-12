@@ -9,7 +9,7 @@ const route = useRoute()
 const uiStore = useUiStore()
 const store = usePostsStore()
 const email = ref('hello@example.com')
-const password = ref('')
+const password = ref('........')
 const isLoading = ref(false)
 
 const handleSubmit = async () => {
