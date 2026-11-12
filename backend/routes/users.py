@@ -3,7 +3,6 @@ from werkzeug.security import generate_password_hash
 from backend.extensions import db
 from backend.models import Conversation, ConversationMember, User
 from backend.services.auth import admin_required, create_user, login_required, require_owner
-from backend.services.demo import guard_demo_account
 from backend.services.images import profile_image
 from backend.utils.validation import APIError, body, choice, email, page, password, string, strings, url
 
@@ -62,7 +61,6 @@ def edit_user(user_id):
     user = db.get_or_404(User, user_id)
     require_owner(user.id)
     data = body(("name", "email", "password", "role", "status"))
-    guard_demo_account(user, data)
     if g.user.account_role != "Admin" and ("role" in data or "status" in data):
         raise APIError("Only administrators may change account roles or status.", 403)
     guard_name_change(user, data)
@@ -99,7 +97,6 @@ def protect_last_admin(user):
 def delete_user(user_id):
     user = db.get_or_404(User, user_id)
     require_owner(user.id)
-    guard_demo_account(user)
     if user.account_role == "Admin":
         protect_last_admin(user)
     # Direct conversations must disappear for both participants when either account is deleted.

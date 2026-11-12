@@ -67,25 +67,3 @@ def test_reputation_broadcast_and_moderation(client, accounts):
     assert comments[0]["text"] == "because" and comments[0]["postTitle"] == "Why?"
     assert call(client, "POST", f"/api/admin/posts/{q['id']}/solved", headers=admin)["isSolved"] is True
     assert call(client, "POST", "/api/admin/posts/bulk-delete", headers=admin, data={"ids": [q["id"]]})["affected"] == 1
-
-
-def test_demo_account_is_member_and_protected(app, client, accounts):
-    from backend.extensions import db
-    from backend.services.demo import DEMO_EMAIL, DEMO_PASSWORD, ensure_demo_account
-    with app.app_context():
-        ensure_demo_account()
-        ensure_demo_account()  # idempotent
-        db.session.commit()
-    login = client.post("/api/auth/login", json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD})
-    assert login.status_code == 200
-    user = login.json["data"]["user"] if "user" in login.json["data"] else client.get(
-        "/api/auth/me", headers={"Authorization": "Bearer " + login.json["data"]["token"]}).json["data"]
-    assert user["isAdmin"] is False
-    demo = {"Authorization": "Bearer " + login.json["data"]["token"]}
-    uid = user["id"]
-    assert client.put(f"/api/users/{uid}", headers=demo, json={"password": "x" * 12}).status_code == 403
-    assert client.put(f"/api/users/{uid}", headers=demo, json={"email": "mine@example.com"}).status_code == 403
-    assert client.delete(f"/api/users/{uid}", headers=demo).status_code == 403
-    assert client.put("/api/profile", headers=demo, json={"bio": "hi"}).status_code == 200
-    assert client.put(f"/api/users/{uid}", headers=accounts["admin"]["headers"],
-                      json={"password": "y" * 12}).status_code == 200

@@ -8,12 +8,8 @@ const router = useRouter()
 const route = useRoute()
 const uiStore = useUiStore()
 const store = usePostsStore()
-// Pre-filled shared demo member (see backend/services/demo.py): visitors just press Sign In.
-// Anyone can still clear the fields and sign in with their own account.
-const DEMO_EMAIL = 'hello@example.com'
-const DEMO_PASSWORD = 'hello-demo-2026'
-const email = ref(DEMO_EMAIL)
-const password = ref(DEMO_PASSWORD)
+const email = ref('hello@example.com')
+const password = ref('')
 const isLoading = ref(false)
 
 const handleSubmit = async () => {
@@ -21,6 +17,7 @@ const handleSubmit = async () => {
   isLoading.value = true
   try {
     await store.authenticate({ email: email.value, password: password.value })
+    password.value = ''
     uiStore.addToast('Signed in successfully!', 'success')
     const redirect = route.query.redirect
     const target = typeof redirect === 'string' && redirect.startsWith('/') &&
